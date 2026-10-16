@@ -1,0 +1,29 @@
+{
+  "name": "@starter/tests-integration",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Black-box integration suite against a running API plus direct PostgreSQL / DynamoDB state assertions, validated against @starter/contracts.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project local-env",
+    "test:unit": "vitest run --project local-env",
+    "test:api": "vitest run --project api",
+    "test:outage": "vitest run --project outage --outputFile.junit=../../reports/junit/integration-outage.xml"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/contracts": "workspace:*",
+    "@starter/db": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@starter/testing": "workspace:*",
+    "@types/pg": "8.23.1"
+  }
+}

@@ -1,0 +1,86 @@
+# EXAMPLE governed exceptions for the live-validation sandbox — schema: see ../../exceptions.yaml
+#
+# NOT LOADED BY ANYTHING. This file is an EXAMPLE for the opt-in live-validation `Sandbox` stage
+# (`-c envs=sandbox`, an ordinary, dedicated AWS account; not a governed environment). Its entries
+# relax baseline controls for cost and teardown reasons and nobody in your project has approved
+# them: they are `status: example`, carry no dates and never apply (a loaded example is an
+# EXAMPLE_NOT_ADOPTED error). Until you adopt them, synthesizing the sandbox fails; the default CI
+# pipeline (dev/staging/prod/integration) is unaffected.
+#
+# To use the sandbox in YOUR account: review every entry against your account and risk
+# appetite; copy the ones you accept into policies/exceptions/exceptions.yaml; remove
+# `status: example`; set createdAt/expiresAt (at most 180 days apart), owner, approver where the
+# rule is critical and your ticket, in a reviewed MR (policies/ is a gate path). If your CI records
+# approvals outside the repository (STARTER_EXCEPTION_APPROVALS), record the adopted entries'
+# digests there (`starter-policies approval-digests`). Keep the window short: the sandbox is torn
+# down after each run, and an expired entry fails the policy gate. See docs/policy-as-code.md.
+#
+# PROPOSED BASELINE — not an approved control set of any organization or regulator.
+schemaVersion: 1
+exceptions:
+  - id: EXC-0400
+    status: example
+    ruleId: BASE-TAG-002
+    resource: 'Sandbox/**'
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): the live-validation stage is tagged Environment=sandbox by
+      design so it can never be mistaken for a governed environment; the governed
+      tag values stay dev/staging/prod. All other required tags and the ephemeral run tags are set.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: EXC-0401
+    status: example
+    ruleId: BASE-ECS-009
+    resource: 'Sandbox/Migrations/DatabaseBootstrap/TaskDefinition/Resource'
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as EXC-0005 — the one-off break-glass bootstrap task reads
+      the RDS master secret at runtime (DB_AUTH=secrets-manager + DB_SECRET_ARN); every runtime
+      identity uses DB_AUTH=iam.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: EXC-0402
+    status: example
+    ruleId: BASE-CF-004
+    resource: 'Sandbox/Frontend/SpaHosting/Distribution/Resource'
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): the API origin is the internet-facing ALB over HTTP (no ACM
+      certificate or custom domain in the sandbox), restricted to the CloudFront origin-facing
+      prefix list and the per-run X-Origin-Verify header (listener default 403).
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: EXC-0403
+    status: example
+    ruleId: BASE-CF-005
+    resource: 'Sandbox/*/*/Distribution/Resource'
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no CloudFront standard logging for the SPA and the test-issuer
+      distributions; the ephemeral sandbox has no access-log bucket, so delayed deliveries cannot
+      leave objects after cdk destroy.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: EXC-0404
+    status: example
+    ruleId: BASE-LMB-003
+    resource: 'Sandbox/*/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler'
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): CDK's own S3 auto-delete provider (empties the SPA and
+      test-issuer buckets on cdk destroy) keeps its 900 s timeout; it runs only on create/delete
+      of those buckets.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: EXC-0405
+    status: example
+    ruleId: BASE-LMB-006
+    resource: 'Sandbox/*/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler'
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no X-Ray tracing for CDK's S3 auto-delete provider (its role has
+      no X-Ray permissions); it is not part of the request path. Its logs go to a managed,
+      encrypted log group deleted with the stack.
+    owner: platform-team
+    ticket: sandbox-profile

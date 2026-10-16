@@ -1,0 +1,5 @@
+sts get-caller-identity
+iam get-role
+iam list-attached-role-policies
+iam list-role-policies
+iam get-role-policy

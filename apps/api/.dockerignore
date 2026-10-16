@@ -1,0 +1,40 @@
+# Ignore file for apps/api/Dockerfile. The build context is the REPOSITORY ROOT,
+# so pass it explicitly:  --ignorefile apps/api/.dockerignore
+# Allowlist: exclude everything, re-include only what the API build needs.
+*
+
+# workspace root config + lockfile
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!.npmrc
+!tsconfig.base.json
+
+# every workspace manifest (pnpm validates the lockfile importers)
+!apps/*/package.json
+!functions/*/package.json
+!packages/*/package.json
+!workflows/*/package.json
+!infra/package.json
+!policies/package.json
+!tests/*/package.json
+!tools/*/package.json
+
+# sources of @starter/api and its workspace dependencies
+!apps/api/
+!functions/
+!packages/
+!workflows/
+
+# never: dependencies, build output, local env/secrets, tests, the image recipe itself
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+**/test
+**/*.test.ts
+**/*.spec.ts
+apps/api/Dockerfile
+apps/api/.dockerignore

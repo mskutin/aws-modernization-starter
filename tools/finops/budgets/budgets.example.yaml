@@ -1,0 +1,19 @@
+# Example AWS Budgets definitions, aligned with infra's CostGuardrails construct
+# (infra/constructs/cost-guardrails.ts) and the per-environment `budget` block
+# in infra/environments/<env>.ts. infra deploys these budgets with the stack;
+# this file and ./aws-cli/*.json are for teams whose budgets live in a payer /
+# management account instead (`aws budgets create-budget`).
+#
+# Budgets only see tag-filtered spend after Project and Environment (and
+# CostCentre) are ACTIVATED as cost allocation tags in the payer account.
+# Values are examples — the budget owner sets the real limits.
+schemaVersion: 1
+currency: USD
+filterTags: [Project, Environment]
+notifications:
+  actualPercent: [50, 80, 100]
+  forecastedPercent: 100
+budgets:
+  dev: { name: starter-dev-monthly, monthlyLimitUsd: 150, project: aws-modernization-starter }
+  staging: { name: starter-stg-monthly, monthlyLimitUsd: 400, project: aws-modernization-starter }
+  prod: { name: starter-prd-monthly, monthlyLimitUsd: 1500, project: aws-modernization-starter }

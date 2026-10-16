@@ -1,0 +1,11 @@
+pnpm-lock.yaml
+node_modules/
+dist/
+coverage/
+cdk.out/
+reports/
+playwright-report/
+test-results/
+*.snap
+policies/guard/**/*.guard
+infra/test/__snapshots__/

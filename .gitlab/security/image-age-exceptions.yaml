@@ -1,0 +1,27 @@
+# Release-age exceptions for CI images (`.gitlab/ci/images.yml`). Owned by the CI team.
+#
+# Rule: a CI image pin is a release at least 14 days old. A younger pin needs an entry here.
+# Enforced by `supply-chain:lint` (tools/ci/src/supply-chain.ts imageAgeExceptionEntries):
+#   - `image` must equal the CURRENT value of `variable` exactly (version + digest): a new
+#     version or digest under the same variable is not covered and fails the lint;
+#   - `released` (YYYY-MM-DD, the image's creation date) is required and not in the future;
+#   - `expires` is at most `released` + 14 days (the exception cannot outlive the age rule) and
+#     at most 90 days ahead; `reason` and `approvedBy` are required;
+#   - an entry is consulted only while the pinned release is younger than 14 days: once the
+#     release is 14 days old it qualifies on its own and the entry is reported as a warning to
+#     delete it (nothing fails because time passed); an entry that expired while the release is
+#     still younger than 14 days is an error (renew it or pin an older release).
+# With gate integrity enabled, changing this file is a gate-defining change (Maintainer approval
+# of the MR's gate state, ADR 0410).
+version: 1
+exceptions:
+  - variable: IMG_MINISTACK
+    image: docker.io/ministackorg/ministack:1.5.26@sha256:f90981c85c9b431d819afa8bdad9735d1434e22e42f1deb8c99a0bcaf30363e7
+    # Image config `created` 2026-10-11T10:31Z (label org.opencontainers.image.version=1.5.26).
+    released: '2026-10-11'
+    reason: >-
+      Emulator service of the integration:ministack:* jobs; the emulator jobs and their baseline
+      are verified against this exact version. It qualifies on its own on 2026-10-25. Fake
+      credentials and synthetic data only, shared runner without socket or privileges.
+    approvedBy: ci-team
+    expires: '2026-10-25'

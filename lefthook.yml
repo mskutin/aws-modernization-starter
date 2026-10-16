@@ -1,0 +1,43 @@
+# Git hooks — a fast local convenience. GitLab CI re-runs every check and is
+# authoritative. Installed by `pnpm install` (root `prepare` →
+# scripts/git-hooks/install.sh: wrappers without absolute paths, so worktrees can share
+# one hooks directory; `--uninstall` removes them). Skip once: LEFTHOOK=0 git commit …
+#
+# Tools prefer a binary on PATH, then a pinned container (same digests as CI,
+# .gitlab/ci/images.yml) on rootless Podman/Docker, and otherwise print a clear
+# SKIP message. Rootless Podman (macOS or Linux): eval "$(scripts/podman/rootless-socket.sh env)"
+min_version: 2.2.1
+glob_matcher: doublestar
+# `lefthook run` would otherwise re-install its own hooks, which embed the absolute path of
+# one checkout's lefthook binary (see scripts/git-hooks/install.sh).
+no_auto_install: true
+
+# Fast (< ~10 s typical): only staged files.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: prettier
+      glob: '**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml,css,html}'
+      run: node_modules/.bin/prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    - name: eslint
+      glob: '**/*.{ts,tsx,js,mjs,cjs}'
+      run: node_modules/.bin/eslint --max-warnings=0 --no-warn-ignored {staged_files}
+    - name: gitleaks
+      run: sh tools/ci/hooks/run-tool.sh gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml .
+    - name: hadolint
+      glob: '**/{Dockerfile,Containerfile}{,.*}'
+      exclude: '**/*.dockerignore'
+      run: sh tools/ci/hooks/run-tool.sh hadolint --config .hadolint.yaml {staged_files}
+    - name: ci-impact-rules
+      glob: '{components.yaml,pnpm-workspace.yaml,**/package.json,.gitlab-ci.yml,.gitlab/ci/*.yml}'
+      run: node tools/impact/src/cli.ts generate && git add .gitlab/ci/generated/components.yml
+    - name: related-unit-tests
+      glob: '**/*.{ts,tsx}'
+      run: node tools/ci/hooks/related-tests.mjs {staged_files}
+
+# Heavier: everything affected since the upstream branch point (impact analysis).
+pre-push:
+  jobs:
+    - name: affected typecheck + unit tests + synth/policy
+      run: sh tools/ci/hooks/pre-push.sh

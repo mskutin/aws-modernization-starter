@@ -1,0 +1,4 @@
+schemaVersion: 1
+exceptions:
+  - id: EXC-0004
+    ruleId: [BASE-S3-001

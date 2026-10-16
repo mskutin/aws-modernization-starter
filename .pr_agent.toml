@@ -1,0 +1,45 @@
+# PR-Agent repository settings (advisory AI review, job `review:ai`).
+# PR-Agent reads this file from the DEFAULT branch. Model, endpoint and token are
+# NOT configured here: they come from masked CI/CD variables, and environment
+# settings override this file (see .gitlab/ci/review.yml, docs/security.md).
+# Deterministic CI gates are authoritative; this review is advisory only.
+
+[config]
+response_language = "en-US"
+# Give the model the repository's working agreement as context.
+repo_context_files = ["AGENTS.md"]
+ignore_pr_title = ["^\\[Auto\\]", "^Draft:"]
+
+[pr_reviewer]
+num_max_findings = 6
+require_tests_review = true
+require_security_review = true
+require_estimate_effort_to_review = false
+require_can_be_split_review = false
+require_ticket_analysis_review = false
+require_score_review = false
+# The CI token is Reporter-level: no labels, comment only.
+enable_review_labels_security = false
+enable_review_labels_effort = false
+persistent_comment = true
+final_update_message = false
+extra_instructions = """\
+This is an AWS modernization starter monorepo (TypeScript, Fastify, React,
+AWS CDK v2, GitLab CI). Focus on: security (IAM least privilege, secrets, input
+validation, RFC 9457 errors), correctness of CDK/IaC changes, backward
+compatibility of the versioned REST API and @starter/contracts, idempotency of job
+submission, graceful shutdown, and missing tests. Do not comment on formatting
+(Prettier/ESLint enforce it). Never ask for credentials.
+"""
+
+[pr_code_suggestions]
+extra_instructions = "Prefer small, behaviour-preserving suggestions; follow existing patterns."
+
+[ignore]
+glob = [
+  'pnpm-lock.yaml',
+  '.gitlab/ci/generated/**',
+  'packages/contracts/openapi/**',
+  '**/__snapshots__/**',
+  'infra/cdk.out/**',
+]

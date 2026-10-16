@@ -1,0 +1,115 @@
+#
+# Proposed policy baseline - Amazon ECS
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/ecs.ts
+#
+
+let starter_ecs_task_definitions = Resources.*[ Type == 'AWS::ECS::TaskDefinition' ]
+let starter_ecs_services = Resources.*[ Type == 'AWS::ECS::Service' ]
+
+rule BASE_ECS_001 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*] {
+    User exists
+    <<BASE-ECS-001: Containers run as a non-root user (User not set)>>
+    User != ''
+    <<BASE-ECS-001: Containers run as a non-root user (User is empty)>>
+    User != /^(0|root)(:.*)?$/
+    <<BASE-ECS-001: Containers run as a non-root user (User is root)>>
+  }
+}
+
+rule BASE_ECS_002 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*].ReadonlyRootFilesystem == true
+  <<BASE-ECS-002: Container root file systems are read-only>>
+}
+
+rule BASE_ECS_003 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*] {
+    Privileged !exists or Privileged != true
+    <<BASE-ECS-003: Containers are not privileged>>
+  }
+}
+
+rule BASE_ECS_004 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.NetworkMode == 'awsvpc'
+  <<BASE-ECS-004: Task definitions use awsvpc networking>>
+}
+
+rule BASE_ECS_005 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*].LogConfiguration.LogDriver IN ['awslogs', 'awsfirelens']
+  <<BASE-ECS-005: Containers ship logs (awslogs or awsfirelens LogConfiguration)>>
+}
+
+rule BASE_ECS_006 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*] {
+    when Environment exists
+         Environment !empty {
+      Environment[*].Name != /(PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|PRIVATE_KEY|ACCESS_KEY)$/
+      <<BASE-ECS-006: No credentials in plain-text container environment (use Secrets)>>
+    }
+  }
+}
+
+rule BASE_ECS_007 when %starter_ecs_services !empty {
+  %starter_ecs_services {
+    Properties.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp !exists or
+    Properties.NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp != 'ENABLED'
+    <<BASE-ECS-007: ECS services do not assign public IPs>>
+  }
+}
+
+# BASE-ECS-008 / BASE-ECS-009 (ADR 0511): deployed task definitions carry no
+# local/CI relaxations and authenticate to PostgreSQL with IAM. Keep in sync with
+# policies/src/rules/runtime.ts (parity tests).
+rule BASE_ECS_008 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*] {
+    when Environment exists {
+      Environment[ Name == 'APP_RUNTIME' ].Value == 'aws'
+      <<BASE-ECS-008: Task definitions carry no local/CI relaxations (APP_RUNTIME must be aws or unset)>>
+      Environment[ Name == 'AUTH_ALLOW_INSECURE_ISSUER' ] empty
+      <<BASE-ECS-008: Task definitions carry no local/CI relaxations (AUTH_ALLOW_INSECURE_ISSUER is set)>>
+      Environment[ Name IN ['AUTH_ISSUER', 'AUTH_JWKS_URI'] Value is_string ].Value != /^[Hh][Tt][Tt][Pp]:/
+      <<BASE-ECS-008: Task definitions carry no local/CI relaxations (issuer or JWKS URI uses http:)>>
+      Environment[ Name == 'DB_SSL' ].Value == 'verify-full'
+      <<BASE-ECS-008: Task definitions carry no local/CI relaxations (DB_SSL must be verify-full)>>
+      Environment[ Name == 'DB_PASSWORD' ] empty
+      <<BASE-ECS-008: Task definitions carry no local/CI relaxations (DB_PASSWORD in the environment)>>
+      when Environment[ Name == 'DB_HOST' ] !empty {
+        Environment[ Name == 'DB_SSL' ] !empty
+        <<BASE-ECS-008: Task definitions carry no local/CI relaxations (DB_HOST without DB_SSL=verify-full)>>
+      }
+      # Client allow-list of a token-verifying container. A value from an intrinsic
+      # or from ECS Secrets cannot be evaluated at synth time and is accepted.
+      when Environment[ Name IN ['AUTH_ISSUER', 'AUTH_AUDIENCE'] ] !empty {
+        Environment[ Name == 'AUTH_ALLOWED_CLIENT_IDS' ] !empty or
+        Secrets[ Name == 'AUTH_ALLOWED_CLIENT_IDS' ] !empty
+        <<BASE-ECS-008: Task definitions carry no local/CI relaxations (token-verifying container without AUTH_ALLOWED_CLIENT_IDS)>>
+        Environment[ Name == 'AUTH_ALLOWED_CLIENT_IDS' Value is_string ].Value == /[^,\s]/
+        <<BASE-ECS-008: Task definitions carry no local/CI relaxations (empty AUTH_ALLOWED_CLIENT_IDS)>>
+      }
+    }
+    when Secrets exists {
+      Secrets[ Name == 'DB_PASSWORD' ] empty
+      <<BASE-ECS-008: Task definitions carry no local/CI relaxations (DB_PASSWORD injected from a secret)>>
+    }
+  }
+}
+
+rule BASE_ECS_009 when %starter_ecs_task_definitions !empty {
+  %starter_ecs_task_definitions.Properties.ContainerDefinitions[*] {
+    when Environment exists {
+      Environment[ Name == 'DB_AUTH' ].Value == 'iam'
+      <<BASE-ECS-009: Task definitions authenticate to PostgreSQL with IAM (DB_AUTH must be iam)>>
+      Environment[ Name == /^DB_.*SECRET/ ] empty
+      <<BASE-ECS-009: Task definitions authenticate to PostgreSQL with IAM (database secret reference)>>
+      when Environment[ Name == 'DB_HOST' ] !empty {
+        Environment[ Name == 'DB_AUTH' ] !empty
+        <<BASE-ECS-009: Task definitions authenticate to PostgreSQL with IAM (DB_HOST without DB_AUTH=iam)>>
+      }
+    }
+    when Secrets exists {
+      Secrets[ Name == /^DB_/ ] empty
+      <<BASE-ECS-009: Task definitions authenticate to PostgreSQL with IAM (DB_* value injected from a secret)>>
+    }
+  }
+}

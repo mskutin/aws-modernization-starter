@@ -1,0 +1,99 @@
+# FinOps price table — MANUALLY MAINTAINED SNAPSHOT, NOT LIVE PRICING.
+#
+# Transcribed on 2026-10-13 from the public AWS Price List bulk offer files
+# (https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/<service>/current/ap-southeast-1/index.json
+# and the global AmazonCloudFront offer). The publication date of each offer
+# file is recorded per service. On-demand list prices in USD, excluding tax,
+# free tiers, Savings Plans / Reserved Instances, enterprise or negotiated commercial
+# terms, and data transfer unless listed. Re-verify with the AWS Pricing
+# Calculator before using numbers for budget decisions. Bump `version` and
+# `capturedAt` whenever a value changes.
+schemaVersion: 1
+version: '2026.10.13-1'
+region: ap-southeast-1
+currency: USD
+capturedAt: '2026-10-13'
+source: AWS Price List bulk API offer files (regional ap-southeast-1; CloudFront global offer), manually transcribed
+services:
+  lambda:
+    offerPublished: '2026-10-12'
+    requestPerMillion: 0.20
+    # Tier 1 (first 6B x86 / 7.5B arm64 GB-seconds per month)
+    gbSecond: { x86_64: 0.0000166667, arm64: 0.0000133334 }
+    provisionedConcurrencyGbSecond: { x86_64: 0.0000051991, arm64: 0.0000041593 }
+    provisionedDurationGbSecond: { x86_64: 0.0000121313, arm64: 0.000009705 }
+  fargate:
+    offerPublished: '2026-09-11'
+    vcpuHour: { x86_64: 0.05056, arm64: 0.04045 }
+    gbHour: { x86_64: 0.00553, arm64: 0.00442 }
+    # Fargate Spot prices are variable and NOT in the price list: see usage assumption fargate.spotDiscountPercent.
+  rds:
+    offerPublished: '2026-10-06'
+    # PostgreSQL, on-demand, per instance-hour. multiAz = Multi-AZ instance deployment (one standby).
+    postgresInstanceHour:
+      db.t4g.micro: { singleAz: 0.025, multiAz: 0.051 }
+      db.t4g.small: { singleAz: 0.051, multiAz: 0.102 }
+      db.t4g.medium: { singleAz: 0.102, multiAz: 0.203 }
+      db.t4g.large: { singleAz: 0.203, multiAz: 0.406 }
+      db.t4g.xlarge: { singleAz: 0.406, multiAz: 0.813 }
+      db.t4g.2xlarge: { singleAz: 0.813, multiAz: 1.626 }
+      db.m7g.large: { singleAz: 0.234, multiAz: 0.468 }
+      db.m7g.xlarge: { singleAz: 0.468, multiAz: 0.937 }
+      db.m7g.2xlarge: { singleAz: 0.937, multiAz: 1.874 }
+      db.m8g.large: { singleAz: 0.234, multiAz: 0.468 }
+      db.m8g.xlarge: { singleAz: 0.468, multiAz: 0.936 }
+      db.m8g.2xlarge: { singleAz: 0.937, multiAz: 1.872 }
+      db.r7g.large: { singleAz: 0.287, multiAz: 0.574 }
+      db.r7g.xlarge: { singleAz: 0.574, multiAz: 1.148 }
+      db.r7g.2xlarge: { singleAz: 1.148, multiAz: 2.295 }
+      db.r8g.large: { singleAz: 0.287, multiAz: 0.574 }
+      db.r8g.xlarge: { singleAz: 0.574, multiAz: 1.148 }
+      db.r8g.2xlarge: { singleAz: 1.148, multiAz: 2.296 }
+    storageGbMonth:
+      gp3: { singleAz: 0.138, multiAz: 0.276 }
+      gp2: { singleAz: 0.138, multiAz: 0.276 }
+    backupGbMonth: 0.095
+  dynamodb:
+    offerPublished: '2026-09-11'
+    onDemandReadPerMillion: 0.1425
+    onDemandWritePerMillion: 0.71
+    provisionedRcuHour: 0.000148
+    provisionedWcuHour: 0.00074
+    storageGbMonth: 0.285
+    pitrGbMonth: 0.228
+  cloudfront:
+    offerPublished: '2026-10-03'
+    # Asia Pacific edge locations ("AP"): first 10 TB tier; HTTPS requests.
+    dataTransferOutGb: 0.12
+    httpsRequestsPer10k: 0.012
+  elb:
+    offerPublished: '2026-09-11'
+    albHour: 0.0252
+    albLcuHour: 0.008
+  vpc:
+    offerPublished: 'NAT 2026-10-12 (AmazonEC2 offer); endpoints and IPv4 2026-09-17 (AmazonVPC offer)'
+    natGatewayHour: 0.059
+    natGatewayDataGb: 0.059
+    interfaceEndpointHourPerAz: 0.013
+    interfaceEndpointDataGb: 0.01
+    publicIpv4Hour: 0.005
+  cloudwatch:
+    offerPublished: '2026-10-07'
+    logIngestGb: 0.70
+    logStorageGbMonth: 0.03
+    alarmStandardMonth: 0.10
+  kms:
+    offerPublished: '2026-09-11'
+    keyMonth: 1.0
+    requestsPer10k: 0.03
+  secretsManager:
+    offerPublished: '2026-09-11'
+    secretMonth: 0.40
+  s3:
+    offerPublished: '2026-10-12'
+    standardGbMonth: 0.025
+  stepFunctions:
+    offerPublished: '2026-09-11'
+    standardTransitionPer1k: 0.025
+    expressRequestPerMillion: 1.0
+    expressGbSecond: 0.00001667

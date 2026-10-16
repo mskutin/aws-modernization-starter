@@ -1,0 +1,214 @@
+{
+  "title": "starter-aws-sandbox reconciliation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "starter-aws-sandbox/reconciliation"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "minLength": 10
+    },
+    "runId": {
+      "type": "string"
+    },
+    "phase": {
+      "anyOf": [
+        {
+          "type": "number",
+          "const": 1
+        },
+        {
+          "type": "number",
+          "const": 2
+        }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PROVISIONAL",
+        "INCONCLUSIVE",
+        "WITHIN_ESTIMATE",
+        "ABOVE_ESTIMATE",
+        "BELOW_ESTIMATE",
+        "STOP_RULE_REACHED"
+      ]
+    },
+    "statusReason": {
+      "type": "string"
+    },
+    "hoursRun": {
+      "type": "number"
+    },
+    "hoursSinceTeardown": {
+      "type": "number"
+    },
+    "estimate": {
+      "type": "object",
+      "properties": {
+        "basis": {
+          "type": "string"
+        },
+        "priceBasis": {
+          "type": "string"
+        },
+        "workloadUsd": {
+          "type": "number"
+        },
+        "withAccountLevelHighUsd": {
+          "type": "number"
+        },
+        "accountLevelLowUsd": {
+          "type": "number"
+        },
+        "accountLevelHighUsd": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "basis",
+        "priceBasis",
+        "workloadUsd",
+        "withAccountLevelHighUsd",
+        "accountLevelLowUsd",
+        "accountLevelHighUsd"
+      ],
+      "additionalProperties": false
+    },
+    "billed": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "readAt": {
+          "type": "string",
+          "minLength": 10
+        },
+        "readBy": {
+          "type": "string"
+        },
+        "periodDays": {
+          "type": "number"
+        },
+        "accountTotalUsd": {
+          "type": "number"
+        },
+        "baselineUsd": {
+          "type": "number"
+        },
+        "attributableUsd": {
+          "type": "number"
+        },
+        "taxIncluded": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source",
+        "readAt",
+        "readBy",
+        "periodDays",
+        "accountTotalUsd",
+        "baselineUsd",
+        "attributableUsd",
+        "taxIncluded"
+      ],
+      "additionalProperties": false
+    },
+    "varianceUsd": {
+      "type": "number"
+    },
+    "variancePercent": {
+      "type": ["number", "null"]
+    },
+    "stopRule": {
+      "type": "object",
+      "properties": {
+        "stopUsd": {
+          "type": "number"
+        },
+        "reached": {
+          "type": "boolean"
+        }
+      },
+      "required": ["stopUsd", "reached"],
+      "additionalProperties": false
+    },
+    "byService": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "estimatedUsd": {
+            "type": "number"
+          },
+          "billedUsd": {
+            "type": ["number", "null"]
+          },
+          "differenceUsd": {
+            "type": ["number", "null"]
+          }
+        },
+        "required": ["service", "estimatedUsd", "billedUsd", "differenceUsd"],
+        "additionalProperties": false
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string",
+            "minLength": 10
+          },
+          "what": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "due", "what"],
+        "additionalProperties": false
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "generatedAt",
+    "runId",
+    "phase",
+    "status",
+    "statusReason",
+    "hoursRun",
+    "hoursSinceTeardown",
+    "estimate",
+    "billed",
+    "varianceUsd",
+    "variancePercent",
+    "stopRule",
+    "byService",
+    "checkpoints",
+    "notes"
+  ],
+  "additionalProperties": false
+}

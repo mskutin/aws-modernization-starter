@@ -1,0 +1,668 @@
+{
+  "title": "starter-aws-sandbox verify-clean",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "starter-aws-sandbox/verify-clean"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "minLength": 10
+    },
+    "runId": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "account": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^\\*{8}\\d{4}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "executionProfile": {
+      "type": "string",
+      "const": "personal-sandbox"
+    },
+    "readOnly": {
+      "type": "boolean",
+      "const": true
+    },
+    "deletesNothing": {
+      "type": "boolean",
+      "const": true
+    },
+    "includeBootstrap": {
+      "type": "boolean"
+    },
+    "strict": {
+      "type": "boolean"
+    },
+    "baseline": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "entries": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": ["file", "entries"],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "since": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 10
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sinceSource": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": ["flag", "inventory"]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inventory": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string"
+            },
+            "runId": {
+              "type": "string"
+            }
+          },
+          "required": ["file", "runId"],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "clean-with-unverifiable",
+        "not-clean",
+        "incomplete",
+        "guard-refused",
+        "error"
+      ]
+    },
+    "statusReason": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "remaining": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "pendingDeletion": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "retainedByDesign": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "notOwned": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "bootstrapReported": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "remainingUsdPerHour": {
+          "type": "number"
+        },
+        "residualLikelyUsd": {
+          "type": "number"
+        },
+        "residualWorstUsd": {
+          "type": "number"
+        },
+        "pendingDeletionUntil": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 10
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "unverifiable": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "error",
+                  "fallback",
+                  "unverifiable-with-this-role",
+                  "not-used-by-experiment"
+                ]
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["category", "status", "evidence"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "remaining",
+        "pendingDeletion",
+        "retainedByDesign",
+        "notOwned",
+        "bootstrapReported",
+        "remainingUsdPerHour",
+        "residualLikelyUsd",
+        "residualWorstUsd",
+        "pendingDeletionUntil",
+        "incomplete",
+        "unverifiable"
+      ],
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error",
+              "fallback",
+              "unverifiable-with-this-role",
+              "not-used-by-experiment"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": ["operation", "kind", "code", "message"],
+              "additionalProperties": false
+            }
+          },
+          "denied": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "justification": {
+            "type": "string"
+          }
+        },
+        "required": ["service", "operations", "status", "errors", "denied", "evidence"],
+        "additionalProperties": false
+      }
+    },
+    "deletionEvidence": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "note": {
+              "type": "string"
+            },
+            "stacks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "deletedAt": {
+                    "type": "string",
+                    "minLength": 10
+                  }
+                },
+                "required": ["name", "status"],
+                "additionalProperties": false
+              }
+            },
+            "resources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "stack": {
+                    "type": "string"
+                  },
+                  "logicalId": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "physicalId": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": ["stack", "logicalId", "type", "status"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["available", "note", "stacks", "resources"],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "class": {
+            "type": "string",
+            "enum": ["remaining", "pending-deletion", "retained-by-design", "not-owned"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["experiment", "bootstrap"]
+          },
+          "service": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "arn": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "minLength": 10
+          },
+          "deletionDate": {
+            "type": "string",
+            "minLength": 10
+          },
+          "match": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "note": {
+            "type": "string"
+          },
+          "hourlyUsdIfLeft": {
+            "type": "number"
+          },
+          "residualLikelyUsd": {
+            "type": "number"
+          },
+          "residualWorstUsd": {
+            "type": "number"
+          }
+        },
+        "required": ["class", "scope", "service", "resourceType", "id", "match"],
+        "additionalProperties": false
+      }
+    },
+    "bootstrap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "class": {
+            "type": "string",
+            "enum": ["remaining", "pending-deletion", "retained-by-design", "not-owned"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["experiment", "bootstrap"]
+          },
+          "service": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "arn": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "minLength": 10
+          },
+          "deletionDate": {
+            "type": "string",
+            "minLength": 10
+          },
+          "match": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "note": {
+            "type": "string"
+          },
+          "hourlyUsdIfLeft": {
+            "type": "number"
+          },
+          "residualLikelyUsd": {
+            "type": "number"
+          },
+          "residualWorstUsd": {
+            "type": "number"
+          }
+        },
+        "required": ["class", "scope", "service", "resourceType", "id", "match"],
+        "additionalProperties": false
+      }
+    },
+    "tagIndexOnly": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "arn": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "covered": {
+            "type": "boolean"
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": ["arn", "service", "covered", "blocking", "note"],
+        "additionalProperties": false
+      }
+    },
+    "guard": {
+      "type": "object",
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "account": {
+                "type": "string",
+                "pattern": "^\\*{8}\\d{4}$"
+              },
+              "principalArn": {
+                "type": "string"
+              },
+              "principalType": {
+                "type": "string"
+              },
+              "region": {
+                "type": "string"
+              },
+              "executionProfile": {
+                "type": "string",
+                "const": "personal-sandbox"
+              }
+            },
+            "required": [
+              "time",
+              "label",
+              "account",
+              "principalArn",
+              "principalType",
+              "region",
+              "executionProfile"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "refusal": {
+          "type": ["string", "null"]
+        },
+        "maxAgeSeconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": ["checks", "refusal", "maxAgeSeconds"],
+      "additionalProperties": false
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "awsCli": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["path", "sha256", "version"],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guardCli": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": ["string", "null"]
+            }
+          },
+          "required": ["path", "sha256"],
+          "additionalProperties": false
+        },
+        "awsCalls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "service": {
+                "type": "string"
+              },
+              "operation": {
+                "type": "string"
+              },
+              "iamAction": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "errorCode": {
+                "type": "string"
+              }
+            },
+            "required": ["service", "operation", "iamAction", "ok"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["awsCli", "guardCli", "awsCalls"],
+      "additionalProperties": false
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "generatedAt",
+    "runId",
+    "region",
+    "account",
+    "executionProfile",
+    "readOnly",
+    "deletesNothing",
+    "includeBootstrap",
+    "strict",
+    "baseline",
+    "since",
+    "sinceSource",
+    "inventory",
+    "status",
+    "statusReason",
+    "summary",
+    "coverage",
+    "deletionEvidence",
+    "findings",
+    "bootstrap",
+    "tagIndexOnly",
+    "guard",
+    "tool",
+    "notes"
+  ],
+  "additionalProperties": false
+}

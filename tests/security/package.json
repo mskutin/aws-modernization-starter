@@ -1,0 +1,37 @@
+{
+  "name": "@starter/tests-security",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Black-box security suite (authentication, authorization/IDOR, idempotency, rate limits, response hygiene, leakage) against a base URL, directly and through the web proxy; artifact leakage scanner.",
+  "bin": {
+    "starter-leak-scan": "./dist/scanner/cli.js",
+    "starter-image-check": "./dist/container/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "SECTEST_MODE=self vitest run --project security",
+    "test:security": "SECTEST_MODE=external vitest run --project security --outputFile.junit=../../reports/junit/security-external.xml",
+    "scan:artifacts": "node dist/scanner/cli.js",
+    "check:image": "node dist/container/cli.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/contracts": "workspace:*",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-sfn": "3.1149.0",
+    "@starter/api": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/testing": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "@types/pg": "8.23.1",
+    "jose": "6.2.12"
+  }
+}

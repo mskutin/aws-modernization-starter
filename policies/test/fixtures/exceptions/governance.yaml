@@ -1,0 +1,38 @@
+schemaVersion: 1
+exceptions:
+  - id: EXC-0010
+    ruleId: BASE-XYZ-999
+    resource: '**'
+    environments: [dev]
+    justification: References a rule that is not in the catalogue at all.
+    owner: platform-team
+    ticket: TKT-1
+    createdAt: '2026-10-01'
+    expiresAt: '2026-11-01'
+  - id: EXC-0010
+    ruleId: BASE-S3-002
+    resource: 'Dev/**'
+    environments: [dev]
+    justification: Critical rule waived without an approver must be rejected.
+    owner: platform-team
+    ticket: TKT-2
+    createdAt: '2026-10-01'
+    expiresAt: '2026-11-01'
+  - id: EXC-0011
+    ruleId: BASE-LOG-001
+    resource: 'Dev/**'
+    environments: [dev]
+    justification: Validity window longer than the allowed maximum of 180 days.
+    owner: platform-team
+    ticket: TKT-3
+    createdAt: '2026-01-01'
+    expiresAt: '2026-12-31'
+  - id: EXC-0012
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    resource: 'Dev/Api/TaskRole/DefaultPolicy/Resource'
+    environments: [dev]
+    justification: Valid AwsSolutions exception with a cdk-nag finding suffix.
+    owner: platform-team
+    ticket: TKT-4
+    createdAt: '2026-10-01'
+    expiresAt: '2026-11-01'

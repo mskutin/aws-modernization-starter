@@ -1,0 +1,101 @@
+# Emulator integration layer — the CDK integration mini-stack and the processing workflow against
+# MiniStack (an AWS emulator) as a GitLab service. Runs only after gates:mandatory passed. MANDATORY
+# when selected: no allow_failure, a failure or a guard refusal fails the pipeline.
+#
+# Trust boundary (docs/ci-cd.md §7a): MiniStack is an untrusted third-party process. It runs
+# as a job-scoped, digest-pinned service on the DEFAULT runner (STARTER_RUNNER_TAG; a generic Docker
+# executor is enough: no container socket, not privileged, no runner-mounted files) with fake
+# credentials and synthetic data. Lambdas run in the service itself (LAMBDA_EXECUTOR=local): no
+# Docker-in-Docker, no socket. These jobs never use the protected/signing runner tags and never hold
+# AWS credentials. Egress of the emulator steps
+# (tests/aws-integration/emulator/ci.sh, after the dependency install and build): the shared guard
+# accepts exactly STARTER_EMULATOR_ALLOWED_ENDPOINT and refuses credentials, profiles, proxies and a
+# telemetry endpoint; the CDK CLI's telemetry, notices and version check are off for every `cdk`
+# call; and the egress audit preloaded into every Node process of ci.sh blocks and records any
+# connection or DNS query to anything else — the `egress audit` step fails the job on one
+# (egress.json). Not covered: non-Node executables (esbuild, pnpm, sh; recorded, not intercepted)
+# and the MiniStack service container's own traffic. Selection: .impact:tests-aws-integration (infra, workflows,
+# Lambdas, shared packages, policies, tests/aws-integration, global paths).
+
+.ministack:
+  extends: [.node, '.impact:tests-aws-integration']
+  stage: integration
+  # Explicit: the default runner. These jobs must never follow a changed `default:` onto a protected
+  # or signing runner (those may hold runner-mounted credentials and run no services).
+  tags: ['$STARTER_RUNNER_TAG']
+  needs:
+    - { job: impact, artifacts: false }
+    - { job: 'gates:mandatory', artifacts: false }
+  # Safety net: on a runner that puts every job on one user-defined network (`network_mode`), service
+  # aliases are network-wide and two concurrent jobs would reach each other's `ministack`. A stock
+  # Docker executor (links or FF_NETWORK_PER_BUILD) scopes the alias to the job; the resource group
+  # serialises the two suites across pipelines either way.
+  resource_group: ci-ministack
+  timeout: 20 minutes
+  services:
+    - name: $IMG_MINISTACK
+      alias: ministack
+      variables:
+        LAMBDA_EXECUTOR: local
+        MINISTACK_REGION: ap-southeast-1
+        # Host name MiniStack writes into the URLs it returns (1.5.26 `MINISTACK_HOST`).
+        MINISTACK_HOST: ministack
+        # A service inherits the job's variables, and MiniStack's local Lambda workers inherit the
+        # service environment: without this the handlers inside the service would call the job's
+        # alias endpoint. Inside the service MiniStack listens on loopback.
+        AWS_ENDPOINT_URL: http://127.0.0.1:4566
+  variables:
+    # The MiniStack service log goes to the job log (the job log is masked as usual). A service
+    # receives only the job's public variables (never masked/protected ones or CI_JOB_TOKEN); here
+    # those are the fake credentials below and predefined CI metadata.
+    CI_DEBUG_SERVICES: 'true'
+    STARTER_EMULATOR_MODE: ci-service
+    STARTER_EMULATOR_ALLOWED_ENDPOINT: http://ministack:4566
+    AWS_ENDPOINT_URL: http://ministack:4566
+    # Emulator-only values, not secrets (MiniStack accepts any static key pair).
+    AWS_ACCESS_KEY_ID: '000000000001'
+    AWS_SECRET_ACCESS_KEY: ministack-local-only
+    AWS_REGION: ap-southeast-1
+    AWS_DEFAULT_REGION: ap-southeast-1
+    AWS_CONFIG_FILE: /dev/null
+    AWS_SHARED_CREDENTIALS_FILE: /dev/null
+    AWS_EC2_METADATA_DISABLED: 'true'
+    # CDK CLI phone-home off (the guard requires both, ci.sh sets them too).
+    CDK_DISABLE_CLI_TELEMETRY: 'true'
+    CDK_DISABLE_VERSION_CHECK: 'true'
+    STARTER_MINISTACK_EXPECTED_VERSION: 1.5.26
+    STARTER_MINISTACK_IMAGE: $IMG_MINISTACK
+    # Exit code of the endpoint guard's refusal (tests/aws-integration/emulator/ci.sh; 3 = workspace
+    # not built, 2 = usage, 1 = failure). Only used to label the failure, never to pass the job.
+    STARTER_EMULATOR_REFUSED_EXIT: '5'
+  script:
+    - node tools/ci/scripts/wait-for.mjs --timeout "${SERVICE_WAIT_SECONDS:-90}" tcp:ministack:4566
+    - pnpm --filter "@starter/infra..." --filter "@starter/tests-aws-integration..." run --if-present build
+    - |
+      rc=0
+      bash tests/aws-integration/emulator/ci.sh "$STARTER_MINISTACK_SUITE" || rc=$?
+      if [ "$rc" -eq "$STARTER_EMULATOR_REFUSED_EXIT" ]; then
+        echo "ERROR: the emulator endpoint guard REFUSED to run (exit $rc): something that could reach real AWS is set. Nothing was deployed." >&2
+      elif [ "$rc" -ne 0 ]; then
+        echo "ERROR: integration:ministack:$STARTER_MINISTACK_SUITE failed (exit $rc)." >&2
+      fi
+      exit "$rc"
+  # No allow_failure: a failure or a refusal fails the pipeline and blocks the merge.
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/aws-integration/emulator/]
+    reports:
+      junit: reports/aws-integration/emulator/*/report/junit.xml
+
+# Layer 2a: deploy the integration mini-stack to MiniStack, reconcile it, destroy it.
+integration:ministack:cdk:
+  extends: [.ministack]
+  variables:
+    STARTER_MINISTACK_SUITE: cdk
+
+# The processing workflow (Step Functions + Lambdas) against the deployed mini-stack.
+integration:ministack:workflows:
+  extends: [.ministack]
+  variables:
+    STARTER_MINISTACK_SUITE: workflows

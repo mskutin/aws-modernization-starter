@@ -1,0 +1,255 @@
+# Container branch templates. Concrete jobs (container:<step>:<component>) are generated for every
+# components.yaml entry with a container-image artifact.
+#
+# Privilege model: NO privileged mode, NO Docker-in-Docker, NO container socket. Buildah runs
+# rootless-in-rootless (chroot isolation, vfs storage) with the runtime's default capabilities —
+# see docs/security.md and docs/adr/0402. A runner whose engine blocks the user namespaces/mounts
+# Buildah needs fails container:build with an explicit diagnostic (tools/ci/scripts/container-build.sh);
+# a project on such a runner opts out with STARTER_CONTAINER_BUILD=false (then no image is built,
+# scanned or published, and release:status and the gate say so).
+#
+# Runners (ADR 0110/0411), all empty by default (one generic runner):
+#   build, scan, SBOM, provenance  STARTER_RELEASE_RUNNER_TAG (as a PROTECTED project variable it
+#                                  moves only protected-ref builds to a protected runner)
+#   publish, verify, chain report  STARTER_PROTECTED_RUNNER_TAG (protected release refs only)
+#   sign                           STARTER_SIGNER_RUNNER_TAG (the runner that mounts the key)
+# MR and other unprotected pipelines build, scan and describe UNSIGNED images; publish, sign, verify
+# and the chain report never exist there. Publish exists on protected release refs when the project's
+# container registry is enabled; sign, verify and the chain report only with STARTER_RELEASE_SIGNING=true.
+
+# Release chain status of every pipeline (tools/ci/src/status.ts `releaseStatus`): states in plain
+# words whether images are built, whether they are published, and "signing: not configured" when the
+# project has not opted in — so an unsigned release never looks signed. Exit 0 = reported, 78 =
+# STARTER_CONTAINER_BUILD=false (allowed warning), 1 = signing opted in but its prerequisites are
+# missing on a protected release ref (fails, fail closed).
+release:status:
+  extends: [.status-report, .rules:always]
+  stage: gate
+  needs: []
+  script:
+    - node tools/ci/src/cli.ts status release --out reports/status
+
+.container-lint:
+  extends: [.gated]
+  stage: verify
+  image: $IMG_HADOLINT
+  needs: [{ job: impact, artifacts: false }]
+  variables:
+    GIT_DEPTH: '1'
+  script:
+    - mkdir -p reports/container
+    - hadolint --config .hadolint.yaml --no-fail -f gitlab_codeclimate "$DOCKERFILE" > "reports/container/hadolint-$COMPONENT_ID.json"
+    - hadolint --config .hadolint.yaml "$DOCKERFILE"
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths: [reports/container/]
+    reports:
+      codequality: reports/container/hadolint-*.json
+
+.container-build:
+  stage: package
+  image: $IMG_BUILDAH
+  tags: ['$STARTER_RELEASE_RUNNER_TAG']
+  needs: [{ job: impact, artifacts: false }]
+  variables:
+    GIT_DEPTH: '1'
+    # Never a reused working copy for an image that may be released.
+    GIT_STRATEGY: clone
+    STORAGE_DRIVER: vfs
+    BUILDAH_ISOLATION: chroot
+    BUILDAH_FORMAT: oci
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - sh tools/ci/scripts/container-build.sh
+  artifacts:
+    expire_in: 3 days
+
+.container-scan:
+  extends: [.gated]
+  stage: package
+  image:
+    name: $IMG_TRIVY
+    entrypoint: ['']
+  tags: ['$STARTER_RELEASE_RUNNER_TAG']
+  variables:
+    GIT_DEPTH: '1'
+    GIT_STRATEGY: clone
+    # The vulnerability DB is ~1.6 GB unpacked; downloading it (seconds) beats zipping it into the cache.
+    TRIVY_CACHE_DIR: /tmp/trivy-cache
+    TRIVY_NO_PROGRESS: 'true'
+    TRIVY_DISABLE_VEX_NOTICE: 'true'
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - sh tools/ci/scripts/trivy.sh image
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/container/, reports/chain/]
+    reports:
+      junit: reports/container/trivy-image-*-junit.xml
+
+.container-sbom:
+  extends: [.gated]
+  stage: package
+  image:
+    name: $IMG_SYFT
+    entrypoint: ['']
+  tags: ['$STARTER_RELEASE_RUNNER_TAG']
+  variables:
+    GIT_DEPTH: '1'
+    GIT_STRATEGY: clone
+    SYFT_CHECK_FOR_APP_UPDATE: 'false'
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - mkdir -p reports/sbom
+    - >-
+      /syft scan "oci-archive:oci-out/$COMPONENT_ID/image.oci.tar"
+      --source-name "$IMAGE_NAME" --source-version "$CI_COMMIT_SHA"
+      -o "cyclonedx-json=reports/sbom/$COMPONENT_ID.cdx.json"
+      -o "spdx-json=reports/sbom/$COMPONENT_ID.spdx.json"
+      -o syft-table
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/sbom/, reports/chain/]
+    reports:
+      cyclonedx: reports/sbom/*.cdx.json
+
+.container-provenance:
+  extends: [.node-bare, .gated]
+  stage: package
+  tags: ['$STARTER_RELEASE_RUNNER_TAG']
+  variables:
+    GIT_STRATEGY: clone
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - node tools/ci/src/cli.ts provenance --image-json "oci-out/$COMPONENT_ID/image.json" --out reports/provenance
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/provenance/, reports/chain/]
+
+# Publishes the scanned OCI archive (digest preserved) to the project's GitLab container registry
+# (predefined CI_REGISTRY* variables, job token) — only after gates:mandatory, only on protected
+# release refs, and only when the registry is enabled for the project (CI_REGISTRY_IMAGE set; else
+# the job does not exist and release:status says "not published"). TLS is verified unless
+# REGISTRY_TLS_VERIFY=false. Pushes the tag <commit sha> plus the moving tag <default branch> (or
+# <git tag>) that the rescan schedule follows. Without STARTER_RELEASE_SIGNING the image is UNSIGNED.
+.container-publish:
+  extends: [.protected-runner]
+  stage: gate
+  image:
+    name: $IMG_SKOPEO
+    entrypoint: ['']
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - sh tools/ci/scripts/container-publish.sh
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/publish/, reports/chain/]
+    reports:
+      dotenv: reports/publish/publish.env
+
+# Opt-in (STARTER_RELEASE_SIGNING=true). Signs the published digest and attests SLSA provenance + the
+# CycloneDX SBOM (ADR 0411) on the signing runner (STARTER_SIGNER_RUNNER_TAG): key and password
+# mounted read-only by that runner at /run/starter-signing — never a GitLab variable. No
+# transparency-log upload. Once opted in, a missing key or a missing publication FAILS the job.
+.container-sign:
+  stage: gate
+  tags: ['$STARTER_SIGNER_RUNNER_TAG']
+  interruptible: false
+  image:
+    name: $IMG_COSIGN
+    entrypoint: ['']
+    docker:
+      user: root
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: '1'
+    COSIGN_YES: 'true'
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - sh tools/ci/scripts/cosign-sign.sh
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/signing/, reports/chain/]
+
+# Opt-in with signing. Independent verification on the protected runner (ADR 0411): trust anchor =
+# runner-mounted /run/starter-trust/cosign.pub (the MR cannot change it; the committed
+# .gitlab/security/cosign.pub must match it); checks the signature and both attestations over the
+# BUILT digest, that the published tag resolves to it, and that an unsigned artifact and an
+# unrelated key are both rejected.
+.container-verify:
+  extends: [.protected-runner]
+  stage: gate
+  image:
+    name: $IMG_COSIGN
+    entrypoint: ['']
+    docker:
+      user: root
+  script:
+    - sh tools/ci/scripts/clone-evidence.sh
+    - sh tools/ci/scripts/cosign-verify.sh
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/verify/, reports/chain/]
+
+# Opt-in with signing. Proof, recorded per release: every job of the chain ran on a protected runner
+# (tags only from STARTER_PROTECTED_RUNNER_TAG / STARTER_SIGNER_RUNNER_TAG; none configured => FAIL)
+# from a fresh clone. Reads the pipeline's jobs (runner, tags) and each chain job's clone-evidence
+# artifact with the job token (the job token cannot read job logs); fails otherwise.
+.container-chain-report:
+  extends: [.protected-runner, .node-bare]
+  stage: gate
+  script:
+    - node tools/ci/src/cli.ts chain-report --component "$COMPONENT_ID" --out reports/release
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    expose_as: 'Release chain'
+    paths: [reports/release/]
+
+# Scheduled rescan (SCHEDULE_TASK=rescan): resolve the moving tag of the latest published
+# image, accept it only with a valid signature from the trust anchor, extract its verified CycloneDX
+# attestation, then re-scan the image and the SBOM with today's vulnerability DB. Needs release
+# signing: without STARTER_RELEASE_SIGNING=true the target cannot be authenticated and the job FAILS
+# with that diagnostic (a rescan schedule is itself an opt-in).
+.container-rescan-verify:
+  extends: [.protected-runner]
+  stage: verify
+  image:
+    name: $IMG_COSIGN
+    entrypoint: ['']
+    docker:
+      user: root
+  script:
+    - sh tools/ci/scripts/cosign-rescan-target.sh
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/rescan/]
+    reports:
+      dotenv: reports/rescan/rescan.env
+
+.container-rescan:
+  extends: [.protected-runner]
+  stage: verify
+  image:
+    name: $IMG_TRIVY
+    entrypoint: ['']
+  variables:
+    TRIVY_CACHE_DIR: /tmp/trivy-cache
+    TRIVY_NO_PROGRESS: 'true'
+    TRIVY_DISABLE_VEX_NOTICE: 'true'
+  script:
+    - sh tools/ci/scripts/trivy.sh rescan
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/rescan/]
+    reports:
+      junit: reports/rescan/trivy-*-junit.xml

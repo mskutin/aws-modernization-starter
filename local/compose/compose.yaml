@@ -1,0 +1,336 @@
+# Local development / test environment for the aws-modernization-starter app.
+#
+# Runs on ROOTLESS Podman (macOS: podman machine; Linux: the user's own engine). Use the helper
+# scripts, which point DOCKER_HOST at the rootless API socket and generate the env file + TLS:
+#   local/compose/bin/dev-up.sh [app]      local/compose/bin/dev-down.sh [--volumes]
+#
+# Profiles
+#   deps : PostgreSQL (TLS) + one-shot postgres-admin + DynamoDB Local + one-shot table init (for
+#          the non-container dev loop and for the integration suite's direct DB assertions).
+#   app  : deps + db-bootstrap (one-shot, admin) -> migrate (one-shot, starter_migrator) -> api
+#          (starter_app, WORKFLOW_MODE=local) -> web (nginx, mimics CloudFront path routing: /v1/* and
+#          /health/* -> API, everything else -> SPA)
+#          + test-idp (TEST ONLY OpenID Connect provider on :9400: SPA sign-in, API keys).
+#
+# Database (ADR 0220/0222): PostgreSQL accepts TCP only over TLS (ssl=on,
+# hostssl-only pg_hba.conf) with a certificate from a throw-away local CA that bin/dev-up.sh
+# generates into $STARTER_TLS_DIR (outside the repository, see bin/_lib.sh); every client verifies
+# it (DB_SSL=verify-full). Each container uses its own least-privilege role; the admin superuser is
+# used by the one-shots only.
+#
+# All published ports bind to 127.0.0.1 only (defaults per docs/contracts.md §6; override
+# with STARTER_{PG,DYNAMODB,API,WEB,IDP}_HOST_PORT when a port is taken). Secrets come from the env
+# file that bin/dev-up.sh generates from .env.example OUTSIDE the repository
+# (${XDG_STATE_HOME:-~/.local/state}/starter-app/compose/.env, override STARTER_LOCAL_STATE_DIR);
+# nothing real is committed. Images are pinned by digest (multi-arch, verified linux/arm64 +
+# linux/amd64). Bind mounts carry `z` so SELinux-enforcing Linux hosts (Fedora, RHEL) may read
+# them; elsewhere it is a no-op.
+#
+# The API image is NOT built by compose: apps/api/Dockerfile uses the repository root as context
+# with apps/api/.dockerignore, which only `podman build --ignorefile` honours (compose would tar
+# the whole repo incl. node_modules). bin/dev-up.sh app --build builds localhost/starter-app/api:local.
+name: starter-app
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+# PostgreSQL connection of every application container: TLS verified against the
+# local CA, password authentication (local only; on AWS the roles use IAM tokens).
+x-db-env: &db-env
+  APP_RUNTIME: local
+  DB_HOST: postgres
+  DB_PORT: '5432'
+  DB_NAME: ${POSTGRES_DB:?set POSTGRES_DB in the env file (run local/compose/bin/dev-up.sh)}
+  DB_AUTH: password
+  DB_SSL: verify-full
+  DB_SSL_ROOT_CERT: /starter/tls/ca.pem
+
+x-api-env: &api-env
+  <<: *db-env
+  PORT: '8080'
+  NODE_ENV: production
+  # Local relaxations (test issuer over http, DB TLS off) are gated on APP_RUNTIME, never on
+  # NODE_ENV; unset means aws (strict). See packages/config/src/runtime.ts.
+  APP_RUNTIME: local
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # The API's least-privilege identity (never the admin superuser).
+  DB_USER: starter_app
+  DB_PASSWORD: ${STARTER_APP_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+  JOBS_TABLE_NAME: ${JOBS_TABLE_NAME:?set JOBS_TABLE_NAME in the env file (run local/compose/bin/dev-up.sh)}
+  DYNAMODB_ENDPOINT: http://dynamodb:8000
+  AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+  # DynamoDB Local ignores credentials but the AWS SDK requires some; never real ones.
+  AWS_ACCESS_KEY_ID: local
+  AWS_SECRET_ACCESS_KEY: local
+  WORKFLOW_MODE: local
+  CORS_ALLOWED_ORIGINS: ''
+  SHUTDOWN_TIMEOUT_MS: '20000'
+  # Identity: the API trusts the TEST ONLY IdP of this stack. Browsers and
+  # tokens use the issuer http://127.0.0.1:<port>; the API fetches the keys inside the compose
+  # network. http is accepted only because APP_RUNTIME=local (refused with APP_RUNTIME=aws).
+  AUTH_ISSUER: http://127.0.0.1:${STARTER_IDP_HOST_PORT:-9400}
+  AUTH_JWKS_URI: http://test-idp:9400/jwks.json
+  AUTH_AUDIENCE: starter-jobs-api
+  AUTH_ALLOW_INSECURE_ISSUER: 'true'
+  AUTH_ALLOWED_CLIENT_IDS: starter-web-local
+  # One trusted hop: the nginx web tier (CloudFront -> ALB is 2 on AWS). The API port is also
+  # published for direct tests; there a client can spoof X-Forwarded-For — which only changes the
+  # key of the failed-authentication rate limit (local only, documented in ADR 0212).
+  TRUST_PROXY_HOPS: '1'
+  # Test suites send far more requests than a person: limits raised, never disabled.
+  RATE_LIMIT_READ_MAX: '5000'
+  RATE_LIMIT_WRITE_MAX: '2000'
+  RATE_LIMIT_UNAUTHENTICATED_MAX: '2000'
+
+services:
+  # ---------------------------------------------------------------- deps
+  postgres:
+    image: docker.io/library/postgres:17.11@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+    container_name: starter-app-postgres
+    profiles: [deps, app]
+    # Installs the local TLS key for the postgres user, then: postgres -c ssl=on -c hba_file=...
+    entrypoint: [/bin/sh, /starter/entrypoint.sh]
+    environment:
+      # initdb of a NEW volume only. Legacy volumes keep their superuser (starter_app);
+      # postgres-admin + db-bootstrap upgrade them in place (data kept).
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in the env file (run local/compose/bin/dev-up.sh)}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - 127.0.0.1:${STARTER_PG_HOST_PORT:-15432}:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/entrypoint.sh:/starter/entrypoint.sh:ro,z
+      - ./postgres/pg_hba.conf:/starter/pg_hba.conf:ro,z
+      - ${STARTER_TLS_DIR:?run local/compose/bin/dev-up.sh (generates the TLS material)}:/starter/tls:ro,z
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -q -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  # One-shot: the volume's admin superuser exists (creates it once on legacy volumes).
+  postgres-admin:
+    image: docker.io/library/postgres:17.11@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+    container_name: starter-app-postgres-admin
+    profiles: [deps, app]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    user: postgres
+    entrypoint: [/bin/sh, /starter/ensure-admin.sh]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in the env file (run local/compose/bin/dev-up.sh)}
+      POSTGRES_ADMIN_USER: ${POSTGRES_ADMIN_USER:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      LEGACY_SUPERUSER: ${LEGACY_SUPERUSER:-}
+      LEGACY_PASSWORD: ${LEGACY_PASSWORD:-}
+    volumes:
+      - ./postgres/ensure-admin.sh:/starter/ensure-admin.sh:ro,z
+      - ${STARTER_TLS_DIR:?run local/compose/bin/dev-up.sh (generates the TLS material)}/ca.pem:/starter/tls/ca.pem:ro,z
+    read_only: true
+    <<: *hardening
+    restart: 'no'
+
+  dynamodb:
+    image: docker.io/amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
+    container_name: starter-app-dynamodb
+    profiles: [deps, app]
+    # -sharedDb: one database regardless of access key / region (API, init and tests share it).
+    # -dbPath  : persisted in a named volume so state survives container restarts.
+    command: [-jar, DynamoDBLocal.jar, -sharedDb, -dbPath, /home/dynamodblocal/data]
+    ports:
+      - 127.0.0.1:${STARTER_DYNAMODB_HOST_PORT:-18000}:8000
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    <<: *hardening
+    restart: unless-stopped
+
+  dynamodb-init:
+    image: docker.io/curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+    container_name: starter-app-dynamodb-init
+    profiles: [deps, app]
+    depends_on:
+      dynamodb:
+        condition: service_started
+    entrypoint: [/bin/sh, /init/init-table.sh]
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      JOBS_TABLE_NAME: ${JOBS_TABLE_NAME:?set JOBS_TABLE_NAME in the env file (run local/compose/bin/dev-up.sh)}
+      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      INIT_DEADLINE_SECONDS: '60'
+    volumes:
+      - ./dynamodb/init-table.sh:/init/init-table.sh:ro,z
+    <<: *hardening
+    restart: 'no'
+
+  # ---------------------------------------------------------------- app
+  # One-shot as the ADMIN: roles, memberships, ownership, CONNECT (idempotent; ADR 0220).
+  db-bootstrap:
+    image: localhost/starter-app/api:local
+    container_name: starter-app-db-bootstrap
+    profiles: [app]
+    pull_policy: never
+    depends_on:
+      postgres-admin:
+        condition: service_completed_successfully
+    command: [dist/db-bootstrap.js]
+    environment:
+      <<: *db-env
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_USER: ${POSTGRES_ADMIN_USER:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      DB_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      DB_BOOTSTRAP_LOGIN_AUTH: password
+      DB_BOOTSTRAP_MIGRATOR_PASSWORD: ${STARTER_MIGRATOR_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      DB_BOOTSTRAP_APP_PASSWORD: ${STARTER_APP_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      DB_BOOTSTRAP_PROCESSOR_PASSWORD: ${STARTER_PROCESSOR_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      DB_BOOTSTRAP_RETENTION_PASSWORD: ${STARTER_RETENTION_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+    volumes:
+      - ${STARTER_TLS_DIR:?run local/compose/bin/dev-up.sh (generates the TLS material)}/ca.pem:/starter/tls/ca.pem:ro,z
+    read_only: true
+    <<: *hardening
+    restart: 'no'
+
+  migrate:
+    image: localhost/starter-app/api:local
+    container_name: starter-app-migrate
+    profiles: [app]
+    # Same image as `api` (built by bin/dev-up.sh from apps/api/Dockerfile); never pulled.
+    pull_policy: never
+    depends_on:
+      db-bootstrap:
+        condition: service_completed_successfully
+    command: [dist/migrate.js, up]
+    environment:
+      <<: *db-env
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # SET ROLE starter_owner inside; no rights of its own.
+      DB_USER: starter_migrator
+      DB_PASSWORD: ${STARTER_MIGRATOR_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+    volumes:
+      - ${STARTER_TLS_DIR:?run local/compose/bin/dev-up.sh (generates the TLS material)}/ca.pem:/starter/tls/ca.pem:ro,z
+    read_only: true
+    <<: *hardening
+    restart: 'no'
+
+  api:
+    image: localhost/starter-app/api:local
+    container_name: starter-app-api
+    profiles: [app]
+    # Built from apps/api/Dockerfile (distroless, non-root, ENTRYPOINT
+    # /nodejs/bin/node) by bin/dev-up.sh; never pulled from a registry.
+    pull_policy: never
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      dynamodb-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *api-env
+      # Workflow (LOCAL SIMULATION): the in-process steps load documents as starter_processor through
+      # load_job_document() — never with the API's starter_app identity.
+      PROCESSOR_DB_USER: starter_processor
+      PROCESSOR_DB_PASSWORD: ${STARTER_PROCESSOR_PASSWORD:?run local/compose/bin/dev-up.sh to create or upgrade the env file}
+      # Workflow: opt-in in-process stale-job reconciler (seconds between runs; 0 = off).
+      RECONCILER_LOCAL_INTERVAL_SECONDS: ${RECONCILER_LOCAL_INTERVAL_SECONDS:-0}
+    ports:
+      - 127.0.0.1:${STARTER_API_HOST_PORT:-8080}:8080
+    volumes:
+      - ${STARTER_TLS_DIR:?run local/compose/bin/dev-up.sh (generates the TLS material)}/ca.pem:/starter/tls/ca.pem:ro,z
+    read_only: true
+    tmpfs:
+      - /tmp
+    <<: *hardening
+    # Podman builds OCI-format images, which drop the Dockerfile HEALTHCHECK, so it is declared
+    # here explicitly. Same probe as the image: dist/healthcheck.js checks LIVENESS
+    # (/health/live), so a database outage never marks the API unhealthy; readiness is asserted
+    # by the test suites (/health/ready) — migrate and dynamodb-init have completed before start.
+    healthcheck:
+      test: [CMD, /nodejs/bin/node, dist/healthcheck.js]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  # TEST ONLY OpenID Connect provider (tools/test-idp, identity): signs in alice / bob /
+  # mallory for the SPA (code + PKCE) and serves the JWKS the API trusts. Never deployed.
+  test-idp:
+    image: localhost/starter-app/test-idp:local
+    container_name: starter-app-test-idp
+    profiles: [app]
+    # Built from tools/test-idp/Dockerfile by bin/dev-up.sh; never pulled.
+    pull_policy: never
+    environment:
+      APP_RUNTIME: local
+      TEST_IDP_HOST: 0.0.0.0
+      TEST_IDP_PORT: '9400'
+      TEST_IDP_ISSUER: http://127.0.0.1:${STARTER_IDP_HOST_PORT:-9400}
+      TEST_IDP_REDIRECT_URIS: http://127.0.0.1:${STARTER_WEB_HOST_PORT:-4173}/,http://localhost:${STARTER_WEB_HOST_PORT:-4173}/,http://127.0.0.1:5173/,http://localhost:5173/
+      # Local test suites mint tokens with POST /test/token (black-box suites, SecTest).
+      TEST_IDP_ENABLE_TEST_ENDPOINTS: 'true'
+    ports:
+      - 127.0.0.1:${STARTER_IDP_HOST_PORT:-9400}:9400
+    read_only: true
+    <<: *hardening
+    # OCI-format images drop the Dockerfile HEALTHCHECK, so it is declared here as well.
+    healthcheck:
+      test: [CMD, /nodejs/bin/node, /app/healthcheck.mjs]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+    restart: unless-stopped
+
+  web:
+    image: docker.io/nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:56b8272e43a0525f67aed68d1e0794a712d10e3e45a563e118e9a77c817e6f86
+    container_name: starter-app-web
+    profiles: [app]
+    depends_on:
+      api:
+        condition: service_healthy
+      test-idp:
+        condition: service_healthy
+    environment:
+      # Exposes the container's DNS resolver to the template so the API upstream is
+      # re-resolved after API container restarts (like CloudFront -> ALB origin).
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: '1'
+      API_UPSTREAM: http://api:8080
+      # SPA runtime configuration served as /config.json (identity).
+      SPA_AUTH_ISSUER: http://127.0.0.1:${STARTER_IDP_HOST_PORT:-9400}
+      SPA_AUTH_CLIENT_ID: starter-web-local
+      SPA_AUTH_SCOPE: openid jobs:read jobs:write
+    ports:
+      - 127.0.0.1:${STARTER_WEB_HOST_PORT:-4173}:8080
+    volumes:
+      - ../../apps/web/dist:/usr/share/nginx/html:ro,z
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro,z
+    <<: *hardening
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/__nginx/health]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: starter-app-pgdata
+  dynamodb-data:
+    name: starter-app-dynamodb-data
+
+networks:
+  default:
+    name: starter-app-net

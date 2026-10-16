@@ -1,0 +1,26 @@
+packages:
+  - apps/*
+  - functions/*
+  - workflows/*
+  - packages/*
+  - infra
+  - policies
+  - tests/*
+  - tools/*
+
+# Packages allowed to run install/build lifecycle scripts (pnpm blocks all others).
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  # Transitive deps of testcontainers (docker-modem/ssh2); their native builds are optional
+  # and not needed for the Unix-socket transport we use, so their scripts stay denied.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
+
+# Supply-chain hygiene: refuse versions published less than 3 days ago.
+minimumReleaseAge: 4320
+
+# Refuse to install on a Node.js outside root package.json "engines" (major of .node-version).
+# pnpm 12 reads this here; `engine-strict` in .npmrc is no longer honoured by pnpm.
+engineStrict: true

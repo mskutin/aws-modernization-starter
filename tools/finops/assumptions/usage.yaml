@@ -1,0 +1,59 @@
+# FinOps usage assumptions — EXPLICIT GUESSES, NOT MEASUREMENTS.
+#
+# The estimator multiplies the price table by these volumes. They are
+# deliberately visible so reviewers can challenge them; replace them with
+# measured values (CUR / Cost Explorer / CloudWatch metrics) once the service
+# runs. Per-environment blocks override `defaults` (deep merge).
+schemaVersion: 1
+version: '2026-10-13'
+hoursPerMonth: 730
+defaults:
+  lambda:
+    invocationsPerMonth: 100000
+    avgDurationMs: 300
+  stepFunctions:
+    executionsPerMonth: 100000
+    stateTransitionsPerExecution: 8
+    expressAvgDurationMs: 1000
+    expressMemoryMb: 64
+  dynamodb:
+    readRequestUnitsPerMonth: 2000000
+    writeRequestUnitsPerMonth: 1000000
+    storageGb: 1
+  cloudfront:
+    dataTransferOutGbPerMonth: 50
+    requestsPerMonth: 2000000
+  alb:
+    averageLcu: 1
+  natGateway:
+    dataProcessedGbPerMonth: 20
+  vpcEndpoint:
+    dataProcessedGbPerMonth: 5
+  logs:
+    ingestGbPerMonthPerLogGroup: 0.5
+    storedCompressionRatio: 0.15
+    assumedRetentionDaysWhenUnset: 365
+  s3:
+    storageGbPerBucket: 1
+  fargate:
+    # Fargate Spot is priced dynamically; assume this average discount vs on-demand.
+    spotDiscountPercent: 70
+environments:
+  dev:
+    lambda: { invocationsPerMonth: 10000 }
+    stepFunctions: { executionsPerMonth: 10000 }
+    dynamodb: { readRequestUnitsPerMonth: 200000, writeRequestUnitsPerMonth: 100000 }
+    cloudfront: { dataTransferOutGbPerMonth: 5, requestsPerMonth: 200000 }
+    logs: { ingestGbPerMonthPerLogGroup: 0.2 }
+  staging:
+    lambda: { invocationsPerMonth: 50000 }
+    stepFunctions: { executionsPerMonth: 50000 }
+    cloudfront: { dataTransferOutGbPerMonth: 20, requestsPerMonth: 1000000 }
+  prod:
+    lambda: { invocationsPerMonth: 1000000 }
+    stepFunctions: { executionsPerMonth: 1000000 }
+    dynamodb:
+      { readRequestUnitsPerMonth: 20000000, writeRequestUnitsPerMonth: 10000000, storageGb: 10 }
+    cloudfront: { dataTransferOutGbPerMonth: 500, requestsPerMonth: 20000000 }
+    alb: { averageLcu: 2 }
+    logs: { ingestGbPerMonthPerLogGroup: 2 }

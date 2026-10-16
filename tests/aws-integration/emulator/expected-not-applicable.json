@@ -1,0 +1,237 @@
+{
+  "$comment": "Versioned baseline of what the MiniStack EMULATOR cannot check (tests/aws-integration/emulator/README.md, ADR 0602). Enforced by src/emulator-results.ts: an unlisted not-applicable item, a stale entry, an undeclared skip or fewer passes than minimumPasses fails ci.sh workflows. Ids are stable and never reused; review every change.",
+  "schemaVersion": 1,
+  "revision": 1,
+  "emulator": {
+    "name": "MiniStack",
+    "version": "1.5.26",
+    "lambdaExecutor": "local"
+  },
+  "minimumPasses": {
+    "total": 13,
+    "full": 7
+  },
+  "entries": [
+    {
+      "id": "NA-DDB-01",
+      "kind": "test",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > RecordingFailed: when RecordFailure itself fails, the execution ends in the explicit Fail state and the job stays non-terminal",
+      "gap": "ddbUpdateTypeCheck",
+      "reason": "MiniStack DynamoDB does not reject SET a = a + :n on a non-numeric attribute (DynamoDB raises ValidationException), so RecordFailure cannot be made to fail this way",
+      "dependsOn": "MiniStack 1.5.26 DynamoDB: no ValidationException for SET a = a + :n on a non-numeric attribute."
+    },
+    {
+      "id": "NA-EXT-01",
+      "kind": "test",
+      "file": "execution-timeout.aws.test.ts",
+      "test": "[ministack-emulator] integration stack execution timeout > TIMED_OUT leaves the job non-terminal; the reconciler skips it while RUNNING and closes it after",
+      "gap": "executionTimeout",
+      "reason": "MiniStack never times out an execution: the state machine TimeoutSeconds is not enforced and TIMED_OUT is never set",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: the state machine TimeoutSeconds is not enforced; no execution reaches TIMED_OUT."
+    },
+    {
+      "id": "NA-FSP-01",
+      "kind": "assertion",
+      "file": "conditional-writes.aws.test.ts",
+      "test": "[ministack-emulator] integration stack conditional writes > a stale failure on a FAILED job is rejected by the RecordFailure condition; the first error is kept",
+      "assertion": "execution error = JobStateConflictError",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-FSP-02",
+      "kind": "assertion",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > processing failure (production code): a stored result that does not match the document fails ProcessJob once, caught into RecordFailure",
+      "assertion": "execution error = JobStateConflictError and a Cause",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-FSP-03",
+      "kind": "assertion",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > task timeout: ValidateJob outlasting its 20 s timeout is NOT retried and is caught into RecordFailure (execution FAILED, not TIMED_OUT)",
+      "assertion": "execution error = the task timeout error",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-FSP-04",
+      "kind": "assertion",
+      "file": "reconciler.aws.test.ts",
+      "test": "[ministack-emulator] integration stack reconciler > describes a FAILED execution (METADATA_ONLY) and closes the job it left non-terminal",
+      "assertion": "execution error = JobValidationError",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-FSP-05",
+      "kind": "assertion",
+      "file": "reconciler.aws.test.ts",
+      "test": "[ministack-emulator] integration stack reconciler > describes a FAILED execution (METADATA_ONLY) and closes the job it left non-terminal",
+      "assertion": "reconciler message names the execution error",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-FSP-06",
+      "kind": "assertion",
+      "file": "workflow.aws.test.ts",
+      "test": "[ministack-emulator] integration stack workflow > business-rule failure: FAILED with JobValidationError, no retries, a Cause, no text in history",
+      "assertion": "execution error = JobValidationError and a Cause",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-FSP-07",
+      "kind": "assertion",
+      "file": "workflow.aws.test.ts",
+      "test": "[ministack-emulator] integration stack workflow > missing document: FAILED with DocumentUnavailableError, never retried",
+      "assertion": "execution error = DocumentUnavailableError and a Cause",
+      "gap": "failStatePaths",
+      "reason": "MiniStack ignores Fail-state ErrorPath/CausePath: a failed execution reports error States.Fail and no cause",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: a Fail state reports only its static Error (States.Fail); ErrorPath/CausePath are not evaluated. Unchanged in 1.5.27."
+    },
+    {
+      "id": "NA-IAM-01",
+      "kind": "test",
+      "file": "iam-kms.aws.test.ts",
+      "test": "[ministack-emulator] integration stack IAM and KMS > IAM: the deployed roles are allowed what they need and denied what they must not (SimulatePrincipalPolicy)",
+      "gap": "iamNotEnforced",
+      "reason": "MiniStack stores IAM policies without enforcing them; its SimulatePrincipalPolicy is its own evaluator, not AWS",
+      "dependsOn": "MiniStack 1.5.26 with AUTH unset (the CI service): no IAM policy evaluation; the opt-in AUTH=true evaluates identity policies only (no boundaries, resource or session policies)."
+    },
+    {
+      "id": "NA-KMS-01",
+      "kind": "test",
+      "file": "iam-kms.aws.test.ts",
+      "test": "[ministack-emulator] integration stack IAM and KMS > KMS: a principal with DynamoDB read but no CMK grant cannot read the encrypted table or use the key",
+      "gap": "kmsNotEnforced",
+      "reason": "MiniStack enforces neither KMS key policies nor the caller-side KMS checks of DynamoDB and Step Functions",
+      "dependsOn": "MiniStack 1.5.26 and 1.5.27: no KMS key-policy or grant evaluation, no caller-side KMS checks in DynamoDB/Step Functions (key policies only on the unreleased main branch)."
+    },
+    {
+      "id": "NA-KMS-02",
+      "kind": "test",
+      "file": "iam-kms.aws.test.ts",
+      "test": "[ministack-emulator] integration stack IAM and KMS > KMS: tables, execution history and every log group use the stack CMK (rotation on)",
+      "gap": "kmsNotEnforced",
+      "reason": "MiniStack enforces neither KMS key policies nor the caller-side KMS checks of DynamoDB and Step Functions",
+      "dependsOn": "MiniStack 1.5.26 and 1.5.27: no KMS key-policy or grant evaluation, no caller-side KMS checks in DynamoDB/Step Functions (key policies only on the unreleased main branch)."
+    },
+    {
+      "id": "NA-THR-01",
+      "kind": "test",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > Lambda service errors: a throttled processor is retried 1 + maxAttempts times, then caught into RecordFailure",
+      "gap": "lambdaThrottle",
+      "reason": "Reserved concurrency 0 does not throttle Step Functions task invocations in MiniStack (the execution succeeds)",
+      "dependsOn": "MiniStack 1.5.26: reserved concurrency 0 does not throttle Step Functions task invocations."
+    },
+    {
+      "id": "NA-LEN-01",
+      "kind": "assertion",
+      "file": "conditional-writes.aws.test.ts",
+      "test": "[ministack-emulator] integration stack conditional writes > a stale failure on a FAILED job is rejected by the RecordFailure condition; the first error is kept",
+      "assertion": "first error = JobValidationError",
+      "gap": "localExecutorErrorNames",
+      "reason": "MiniStack's socket-less local Lambda executor reports every handler error as Runtime.HandlerError (the thrown error's name is dropped), so Retry/Catch on handler error names (TransientDependencyError, DuplicateExecutionError) and error-name assertions cannot be verified",
+      "dependsOn": "MiniStack 1.5.26 LAMBDA_EXECUTOR=local (socket-less; the CI service): the warm-worker path reports every handler error as errorType Runtime.HandlerError (thrown name dropped). Unchanged in 1.5.27 (latest release as of 2026-10-15). Closed by an upstream fix that keeps err.name, or by the docker executor on a dedicated, disposable runner."
+    },
+    {
+      "id": "NA-LEN-02",
+      "kind": "assertion",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > processing failure (production code): a stored result that does not match the document fails ProcessJob once, caught into RecordFailure",
+      "assertion": "ProcessJob failed with JobStateConflictError",
+      "gap": "localExecutorErrorNames",
+      "reason": "MiniStack's socket-less local Lambda executor reports every handler error as Runtime.HandlerError (the thrown error's name is dropped), so Retry/Catch on handler error names (TransientDependencyError, DuplicateExecutionError) and error-name assertions cannot be verified",
+      "dependsOn": "MiniStack 1.5.26 LAMBDA_EXECUTOR=local (socket-less; the CI service): the warm-worker path reports every handler error as errorType Runtime.HandlerError (thrown name dropped). Unchanged in 1.5.27 (latest release as of 2026-10-15). Closed by an upstream fix that keeps err.name, or by the docker executor on a dedicated, disposable runner."
+    },
+    {
+      "id": "NA-LEN-03",
+      "kind": "test",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > retry: a transient processor failure is retried with backoff and the job SUCCEEDS",
+      "gap": "localExecutorErrorNames",
+      "reason": "MiniStack's socket-less local Lambda executor reports every handler error as Runtime.HandlerError (the thrown error's name is dropped), so Retry/Catch on handler error names (TransientDependencyError, DuplicateExecutionError) and error-name assertions cannot be verified",
+      "dependsOn": "MiniStack 1.5.26 LAMBDA_EXECUTOR=local (socket-less; the CI service): the warm-worker path reports every handler error as errorType Runtime.HandlerError (thrown name dropped). Unchanged in 1.5.27 (latest release as of 2026-10-15). Closed by an upstream fix that keeps err.name, or by the docker executor on a dedicated, disposable runner."
+    },
+    {
+      "id": "NA-LEN-04",
+      "kind": "assertion",
+      "file": "workflow.aws.test.ts",
+      "test": "[ministack-emulator] integration stack workflow > business-rule failure: FAILED with JobValidationError, no retries, a Cause, no text in history",
+      "assertion": "ValidateJob failed with JobValidationError",
+      "gap": "localExecutorErrorNames",
+      "reason": "MiniStack's socket-less local Lambda executor reports every handler error as Runtime.HandlerError (the thrown error's name is dropped), so Retry/Catch on handler error names (TransientDependencyError, DuplicateExecutionError) and error-name assertions cannot be verified",
+      "dependsOn": "MiniStack 1.5.26 LAMBDA_EXECUTOR=local (socket-less; the CI service): the warm-worker path reports every handler error as errorType Runtime.HandlerError (thrown name dropped). Unchanged in 1.5.27 (latest release as of 2026-10-15). Closed by an upstream fix that keeps err.name, or by the docker executor on a dedicated, disposable runner."
+    },
+    {
+      "id": "NA-LEN-05",
+      "kind": "assertion",
+      "file": "workflow.aws.test.ts",
+      "test": "[ministack-emulator] integration stack workflow > business-rule failure: FAILED with JobValidationError, no retries, a Cause, no text in history",
+      "assertion": "job item errorName = JobValidationError",
+      "gap": "localExecutorErrorNames",
+      "reason": "MiniStack's socket-less local Lambda executor reports every handler error as Runtime.HandlerError (the thrown error's name is dropped), so Retry/Catch on handler error names (TransientDependencyError, DuplicateExecutionError) and error-name assertions cannot be verified",
+      "dependsOn": "MiniStack 1.5.26 LAMBDA_EXECUTOR=local (socket-less; the CI service): the warm-worker path reports every handler error as errorType Runtime.HandlerError (thrown name dropped). Unchanged in 1.5.27 (latest release as of 2026-10-15). Closed by an upstream fix that keeps err.name, or by the docker executor on a dedicated, disposable runner."
+    },
+    {
+      "id": "NA-LEN-06",
+      "kind": "assertion",
+      "file": "workflow.aws.test.ts",
+      "test": "[ministack-emulator] integration stack workflow > missing document: FAILED with DocumentUnavailableError, never retried",
+      "assertion": "ValidateJob and the job item report DocumentUnavailableError",
+      "gap": "localExecutorErrorNames",
+      "reason": "MiniStack's socket-less local Lambda executor reports every handler error as Runtime.HandlerError (the thrown error's name is dropped), so Retry/Catch on handler error names (TransientDependencyError, DuplicateExecutionError) and error-name assertions cannot be verified",
+      "dependsOn": "MiniStack 1.5.26 LAMBDA_EXECUTOR=local (socket-less; the CI service): the warm-worker path reports every handler error as errorType Runtime.HandlerError (thrown name dropped). Unchanged in 1.5.27 (latest release as of 2026-10-15). Closed by an upstream fix that keeps err.name, or by the docker executor on a dedicated, disposable runner."
+    },
+    {
+      "id": "NA-SFL-01",
+      "kind": "test",
+      "file": "log-scan.aws.test.ts",
+      "test": "[ministack-emulator] integration stack log canary scan > state machine group: a marker placed in an execution input is found (execution data logged), no canary marker",
+      "gap": "sfnExecutionLogs",
+      "reason": "MiniStack stores the state machine logging configuration but delivers no execution events to CloudWatch Logs",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: the logging configuration is stored, no execution event is delivered to CloudWatch Logs."
+    },
+    {
+      "id": "NA-TIH-01",
+      "kind": "test",
+      "file": "workflow.aws.test.ts",
+      "test": "[ministack-emulator] integration stack workflow > the ASL forwards only the spec fields: no task input in the history carries the extra field",
+      "gap": "taskInputNotInHistory",
+      "reason": "MiniStack records no task input in the execution history (TaskScheduled carries the resource only)",
+      "dependsOn": "MiniStack 1.5.26 execution history: TaskScheduled/LambdaFunctionScheduled events carry no task input."
+    },
+    {
+      "id": "NA-VAL-01",
+      "kind": "test",
+      "file": "versioning.aws.test.ts",
+      "test": "[ministack-emulator] integration stack versions and alias rollback > runs through the alias, routes it to a failing version, and rolls back by repointing it",
+      "gap": "versionsAliases",
+      "reason": "MiniStack runs executions started through a version or alias on the latest revision, omits their version/alias ARNs, and its CloudFormation does not provision StateMachineVersion/Alias",
+      "dependsOn": "MiniStack 1.5.26 CloudFormation: no AWS::StepFunctions::StateMachineVersion/StateMachineAlias types; executions through an alias run the latest revision."
+    },
+    {
+      "id": "NA-RJM-01",
+      "kind": "assertion",
+      "file": "failure-paths.aws.test.ts",
+      "test": "[ministack-emulator] integration stack failure paths > retry: a transient processor failure is retried with backoff and the job SUCCEEDS",
+      "assertion": "waits between attempts within MaxDelaySeconds",
+      "gap": "retryJitterMaxDelay",
+      "reason": "MiniStack implements neither MaxDelaySeconds nor JitterStrategy of a Retrier (plain exponential backoff), so the capped, jittered waits between retries are not verifiable",
+      "dependsOn": "MiniStack 1.5.26 Step Functions: Retrier MaxDelaySeconds and JitterStrategy are not implemented (plain exponential backoff, capped at 60 s).",
+      "executors": ["docker"]
+    }
+  ]
+}

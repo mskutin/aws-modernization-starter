@@ -1,0 +1,20 @@
+# gitleaks configuration (secrets:gitleaks in CI, lefthook pre-commit on staged changes).
+# Extends the upstream default rule set. NO allowlist: an allowlist can only hide a
+# secret. The default rules fire on nothing in this repository — not on the documented test values
+# (`ci-only-not-secret`, the `000000000000` placeholder account, DynamoDB Local's static keys), not in
+# generated files or policy fixtures (scanned without any allowlist), so none is configured.
+#
+# A future, reviewed false positive gets the narrowest allowlist that works: `targetRules` naming
+# the rule(s) that fire, `regexTarget = "match"` for value patterns, a `description`, and `paths`
+# where possible. tools/ci/test/gitleaks-config.test.ts enforces this; with gate integrity enabled,
+# changing this file is a gate-defining change (Maintainer approval, ADR 0410).
+title = "aws-modernization-starter"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "starter-gitlab-runner-token"
+description = "GitLab runner authentication token"
+regex = '''glrt-[0-9A-Za-z_-]{20,}'''
+keywords = ["glrt-"]

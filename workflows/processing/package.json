@@ -1,0 +1,39 @@
+{
+  "name": "@starter/workflow-processing",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Processing workflow spec (runtime-safe) and its AWS Step Functions CDK definition.",
+  "exports": {
+    ".": {
+      "types": "./dist/spec.d.ts",
+      "default": "./dist/spec.js"
+    },
+    "./cdk": {
+      "types": "./dist/cdk/index.d.ts",
+      "default": "./dist/cdk/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.272.0",
+    "constructs": "^10.8.1"
+  },
+  "peerDependenciesMeta": {
+    "aws-cdk-lib": {
+      "optional": true
+    },
+    "constructs": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "aws-cdk-lib": "2.272.0",
+    "constructs": "10.8.1"
+  }
+}

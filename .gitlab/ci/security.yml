@@ -1,0 +1,137 @@
+# Security & supply-chain checks. All repo-wide, all gated, all non-privileged.
+
+secrets:gitleaks:
+  extends: [.gated, .rules:always]
+  stage: verify
+  image:
+    name: $IMG_GITLEAKS
+    entrypoint: ['']
+  needs: [{ job: impact, artifacts: false }]
+  variables:
+    # MR pipelines scan the MR's commits; default branch/schedules scan full history.
+    GIT_DEPTH: '0'
+  script:
+    - sh tools/ci/scripts/gitleaks.sh
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/secrets/]
+    reports:
+      junit: reports/secrets/gitleaks-junit.xml
+
+# GitLab SAST analyzer (Semgrep engine + GitLab sast-rules pinned by image digest).
+# The analyzer only reports; tools/ci/scripts/sast-gate.py fails on High/Critical.
+sast:semgrep:
+  extends: [.gated, .rules:always]
+  stage: verify
+  image: $IMG_SEMGREP
+  needs: [{ job: impact, artifacts: false }]
+  variables:
+    GIT_DEPTH: '1'
+    SAST_EXCLUDED_PATHS: 'node_modules, dist, coverage, cdk.out, reports, .pnpm-store, .cache, **/test/fixtures, **/*.test.ts'
+    SEARCH_MAX_DEPTH: '12'
+    SAST_FAIL_ON: 'Critical,High'
+  script:
+    - /analyzer run
+    - python3 tools/ci/scripts/sast-gate.py gl-sast-report.json reports/sast
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [gl-sast-report.json, reports/sast/]
+    reports:
+      sast: gl-sast-report.json
+      codequality: reports/sast/gl-code-quality-report.json
+
+# SCA gate: Trivy over pnpm-lock.yaml. Fails on HIGH/CRITICAL with a fix available.
+# Exceptions: .gitlab/security/trivyignore.yaml (every entry needs expired_at).
+sca:trivy-fs:
+  extends: [.gated, .rules:always]
+  stage: verify
+  image:
+    name: $IMG_TRIVY
+    entrypoint: ['']
+  needs: [{ job: impact, artifacts: false }]
+  variables:
+    GIT_DEPTH: '1'
+    # The vulnerability DB is ~1.6 GB unpacked; downloading it (seconds) beats zipping it into the cache.
+    TRIVY_CACHE_DIR: /tmp/trivy-cache
+    TRIVY_NO_PROGRESS: 'true'
+    TRIVY_DISABLE_VEX_NOTICE: 'true'
+  script:
+    - sh tools/ci/scripts/trivy.sh fs
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/sca/]
+    reports:
+      junit: reports/sca/trivy-fs-junit.xml
+
+# Second opinion from the npm advisory database. Advisory only: Trivy is the gate.
+sca:pnpm-audit:
+  extends: [.rules:always]
+  stage: verify
+  image: $IMG_NODE
+  needs: [{ job: impact, artifacts: false }]
+  allow_failure: true
+  variables:
+    GIT_DEPTH: '1'
+    # Outside the project dir: repo-wide linters must never see tool caches.
+    COREPACK_HOME: /tmp/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  script:
+    - corepack enable pnpm
+    - mkdir -p reports/sca
+    - pnpm audit --json > reports/sca/pnpm-audit.json || true
+    - pnpm audit --audit-level high
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/sca/]
+
+# License compliance: allowlist + expiring package exceptions.
+licenses:
+  extends: [.node, .gated, .rules:always]
+  stage: verify
+  needs: [{ job: impact, artifacts: false }]
+  script:
+    - node tools/ci/src/cli.ts licenses --policy .gitlab/security/license-policy.yaml --out reports/licenses
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/licenses/]
+    reports:
+      junit: reports/licenses/junit.xml
+
+# Pinning (images + Dockerfile FROM by digest) and exception-expiry hygiene.
+supply-chain:lint:
+  extends: [.node, .gated, .rules:always]
+  stage: verify
+  needs: [{ job: impact, artifacts: false }]
+  script:
+    - node tools/ci/src/cli.ts supply-chain-lint --out reports/supply-chain
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/supply-chain/]
+    reports:
+      junit: reports/supply-chain/junit.xml
+
+# Proof, in MR, main and tag pipelines alike: this job runs on the DEFAULT runner (STARTER_RUNNER_TAG,
+# the one that runs MR code) and fails if any COSIGN_*/AWS_* (except the region and the
+# AWS_JOBS_ENABLED switch) or STARTER_SIGNING_* variable NAME, or a runner-scoped secret mount
+# (/run/starter-signing, /run/starter-trust, /run/starter-aws), reaches it. Signing and AWS
+# credentials are opt-in runner-mounted files of dedicated protected runners, never CI/CD variables
+# (ADR 0111). With zero configuration it passes trivially and keeps passing only while that holds.
+# Reports names only, never values.
+security:protected-secrets:
+  extends: [.node-bare, .gated, .rules:always]
+  stage: verify
+  needs: [{ job: impact, artifacts: false }]
+  # Explicit: the default runner, whatever `default:` says.
+  tags: ['$STARTER_RUNNER_TAG']
+  script:
+    - node tools/ci/src/cli.ts protected-secrets --out reports/secrets-binding
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/secrets-binding/]

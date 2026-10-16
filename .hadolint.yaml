@@ -1,0 +1,22 @@
+# hadolint configuration (container:lint:<component>, lefthook pre-commit).
+failure-threshold: warning
+# Only pull base images from these registries (all base images are digest-pinned;
+# supply-chain:lint enforces that separately).
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - quay.io
+  - mcr.microsoft.com
+  - registry.gitlab.com
+# OCI image-spec labels every image must carry (set from CI build args).
+label-schema:
+  org.opencontainers.image.title: text
+  org.opencontainers.image.description: text
+  org.opencontainers.image.source: text
+  org.opencontainers.image.revision: text
+  org.opencontainers.image.created: text
+  org.opencontainers.image.version: text
+# The repository is MIT-licensed; images may add org.opencontainers.image.licenses: MIT (not
+# required here: strict-labels is off and the label is not part of the schema above).
+strict-labels: false
+ignored: []

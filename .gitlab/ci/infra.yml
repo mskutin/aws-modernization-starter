@@ -1,0 +1,64 @@
+# Infrastructure branch templates. Concrete jobs synth:<id> (parallel matrix per
+# environment), policy:<id> and finops:<id> are generated for infra components.
+
+# Offline synth (no AWS credentials): placeholder image digest, account
+# placeholders, Lambda bundles from source. One cloud assembly per environment.
+.synth:
+  extends: [.node, .gated]
+  stage: verify
+  needs: [{ job: impact, artifacts: false }]
+  script:
+    - sh tools/ci/scripts/cdk-synth.sh "$CDK_ENV"
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths: [infra/cdk.out/$CDK_ENV/, reports/synth/]
+
+# cdk-nag runs inside synth (validation plugin: any error fails synth). This job
+# adds CloudFormation Guard over every assembly and the governed-exception audit
+# from @starter/policies. `pnpm -C` keeps the CLIs' exit codes (0 pass, 1 findings,
+# 2 no templates / no cfn-guard).
+#
+# Exception approvals: STARTER_EXCEPTION_APPROVALS is a project file variable that
+# only a Maintainer can set, filled from the Maintainer-only gate project by
+# the Maintainer gate-policy tooling (`gate-policy exceptions`) — the MR cannot write it, and removing the flag below changes a
+# gate-defining file, which the gate-integrity check blocks (ADR 0410).
+.policy-check:
+  extends: [.node, .gated]
+  stage: verify
+  variables:
+    REQUIRE_CFN_GUARD: '1'
+  script:
+    - pnpm --filter "@starter/policies..." run --if-present build
+    - pnpm -C policies run guard:install
+    - |
+      set -- check-exceptions --templates infra/cdk.out --report reports/policies/exceptions.json
+      if [ -n "${STARTER_EXCEPTION_APPROVALS:-}" ]; then
+        set -- "$@" --approvals "$STARTER_EXCEPTION_APPROVALS"
+      else
+        echo "exception approvals: NOT CONFIGURED (STARTER_EXCEPTION_APPROVALS unset); new or edited exceptions are still blocked by the gate-integrity check"
+      fi
+      pnpm -C policies run "$@"
+    - pnpm -C policies run guard:validate --dir infra/cdk.out --out reports/policies
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/policies/, infra/cdk.out/*/validation-report.json]
+    reports:
+      junit: reports/policies/guard-junit.xml
+
+# Cost impact + destructive-change report: head assemblies (from synth) vs. the
+# same environments synthesized at the diff base in a temporary worktree.
+.finops:
+  extends: [.node, .gated]
+  stage: verify
+  variables:
+    GIT_DEPTH: '0'
+  script:
+    - sh tools/ci/scripts/synth-baseline.sh .cache/finops/baseline
+    - sh tools/ci/scripts/finops.sh .cache/finops/baseline infra/cdk.out
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    expose_as: 'FinOps report'
+    paths: [reports/finops/]

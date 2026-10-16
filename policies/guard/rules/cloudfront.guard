@@ -1,0 +1,94 @@
+#
+# Proposed policy baseline - Amazon CloudFront
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/cloudfront.ts
+#
+
+let starter_cf_distributions = Resources.*[ Type == 'AWS::CloudFront::Distribution' ]
+let starter_cf_response_header_policies = Resources.*[ Type == 'AWS::CloudFront::ResponseHeadersPolicy' ]
+let starter_cf_access_log_sources = Resources.*[
+  Type == 'AWS::Logs::DeliverySource'
+  Properties.LogType == 'ACCESS_LOGS'
+]
+
+rule BASE_CF_001 when %starter_cf_distributions !empty {
+  %starter_cf_distributions.Properties.DistributionConfig.Origins[ S3OriginConfig exists ] {
+    OriginAccessControlId exists
+    <<BASE-CF-001: S3 origins use Origin Access Control (OriginAccessControlId missing)>>
+    S3OriginConfig.OriginAccessIdentity !exists or S3OriginConfig.OriginAccessIdentity == ''
+    <<BASE-CF-001: S3 origins use Origin Access Control (legacy OriginAccessIdentity in use)>>
+  }
+}
+
+rule BASE_CF_002 when %starter_cf_distributions !empty {
+  %starter_cf_distributions {
+    when Properties.DistributionConfig.ViewerCertificate.AcmCertificateArn exists or
+         Properties.DistributionConfig.ViewerCertificate.IamCertificateId exists {
+      Properties.DistributionConfig.ViewerCertificate.MinimumProtocolVersion IN ['TLSv1.2_2021', 'TLSv1.2_2025', 'TLSv1.3_2025']
+      <<BASE-CF-002: Viewer TLS uses a modern security policy (TLSv1.2_2021 or newer)>>
+    }
+    when Properties.Tags[ Key == 'Environment' ].Value IN ['staging', 'prod'] {
+      Properties.DistributionConfig.ViewerCertificate.AcmCertificateArn exists or
+      Properties.DistributionConfig.ViewerCertificate.IamCertificateId exists
+      <<BASE-CF-002: staging/prod distributions use a custom ACM certificate (default certificate permits TLSv1)>>
+    }
+  }
+}
+
+rule BASE_CF_003 when %starter_cf_distributions !empty {
+  %starter_cf_distributions {
+    Properties.DistributionConfig.DefaultCacheBehavior.ViewerProtocolPolicy IN ['redirect-to-https', 'https-only']
+    <<BASE-CF-003: Viewers are forced onto HTTPS (default cache behavior)>>
+    when Properties.DistributionConfig.CacheBehaviors exists {
+      Properties.DistributionConfig.CacheBehaviors[*].ViewerProtocolPolicy IN ['redirect-to-https', 'https-only']
+      <<BASE-CF-003: Viewers are forced onto HTTPS (cache behavior)>>
+    }
+  }
+}
+
+rule BASE_CF_004 when %starter_cf_distributions !empty {
+  %starter_cf_distributions.Properties.DistributionConfig.Origins[ CustomOriginConfig exists ] {
+    CustomOriginConfig.OriginProtocolPolicy == 'https-only'
+    <<BASE-CF-004: Custom origins are reached over TLS (OriginProtocolPolicy must be https-only)>>
+    when CustomOriginConfig.OriginSSLProtocols exists {
+      CustomOriginConfig.OriginSSLProtocols[*] == 'TLSv1.2'
+      <<BASE-CF-004: Custom origins are reached over TLS 1.2 (OriginSSLProtocols must be [TLSv1.2])>>
+    }
+  }
+}
+
+rule BASE_CF_005 when %starter_cf_distributions !empty {
+  when %starter_cf_access_log_sources empty {
+    %starter_cf_distributions.Properties.DistributionConfig.Logging.Bucket exists
+    <<BASE-CF-005: Distributions have access logging (standard logging bucket or ACCESS_LOGS delivery source)>>
+  }
+}
+
+rule BASE_CF_006 {
+  when %starter_cf_distributions !empty {
+    %starter_cf_distributions {
+      Properties.DistributionConfig.DefaultCacheBehavior.ResponseHeadersPolicyId exists
+      <<BASE-CF-006: Security response headers are applied (no response headers policy)>>
+      when Properties.DistributionConfig.DefaultCacheBehavior.ResponseHeadersPolicyId is_string {
+        Properties.DistributionConfig.DefaultCacheBehavior.ResponseHeadersPolicyId IN [
+          '67f7725c-6f97-4210-82d7-5512b31e9d03',
+          'e61eb60c-9c35-4d20-a928-2b84e02af89c',
+          'eaab4381-ed33-4a86-88ca-d9558dc6cd63'
+        ]
+        <<BASE-CF-006: Security response headers are applied (managed policy is not a security-headers policy)>>
+      }
+    }
+  }
+  when %starter_cf_response_header_policies !empty {
+    %starter_cf_response_header_policies.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig {
+      StrictTransportSecurity.AccessControlMaxAgeSec >= 31536000
+      <<BASE-CF-006: Security response headers are applied (HSTS max-age >= 31536000)>>
+      ContentTypeOptions is_struct
+      <<BASE-CF-006: Security response headers are applied (X-Content-Type-Options)>>
+      FrameOptions is_struct
+      <<BASE-CF-006: Security response headers are applied (X-Frame-Options)>>
+      ReferrerPolicy is_struct
+      <<BASE-CF-006: Security response headers are applied (Referrer-Policy)>>
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@starter/tool-test-idp",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "TEST ONLY OpenID Connect provider for local development, CI and the operator host of the AWS sandbox: authorization code + PKCE (S256) for the SPA, JWKS for the API, optional test endpoints, optional file-backed ES256 key (sandbox-issuer CLI). Refuses APP_RUNTIME=aws; never deployed.",
+  "exports": {
+    ".": {
+      "types": "./dist/idp.d.ts",
+      "default": "./dist/idp.js"
+    }
+  },
+  "bin": {
+    "starter-test-idp": "./dist/server.js",
+    "starter-sandbox-issuer": "./dist/sandbox-issuer.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/bundle.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@starter/testing": "workspace:*",
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@starter/api": "workspace:*",
+    "esbuild": "0.28.2",
+    "vitest": "5.0.3"
+  }
+}

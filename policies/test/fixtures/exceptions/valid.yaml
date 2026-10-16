@@ -1,0 +1,21 @@
+schemaVersion: 1
+exceptions:
+  - id: EXC-0001
+    ruleId: BASE-CF-002
+    resource: 'Staging/Edge/Distribution/**'
+    environments: [staging]
+    justification: Staging has no custom domain yet; traffic is synthetic test data only.
+    owner: platform-team
+    ticket: TKT-123
+    createdAt: '2026-10-01'
+    expiresAt: '2026-12-31'
+  - id: EXC-0002
+    ruleId: BASE-LMB-004
+    resource: 'Fn'
+    environments: [dev, staging]
+    justification: New sandbox accounts have a 10 concurrency quota; reservation fails to deploy.
+    owner: app-team
+    approver: security-lead
+    ticket: TKT-124
+    createdAt: '2026-10-01'
+    expiresAt: '2026-10-20'

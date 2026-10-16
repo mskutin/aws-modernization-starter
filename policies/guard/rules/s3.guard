@@ -1,0 +1,250 @@
+#
+# Proposed policy baseline - Amazon S3
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata (severity, rationale, remediation): policies/src/rules/s3.ts
+#
+
+let starter_s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
+let starter_s3_bucket_policies = Resources.*[ Type == 'AWS::S3::BucketPolicy' ]
+
+rule BASE_S3_001 when %starter_s3_buckets !empty {
+  %starter_s3_buckets {
+    Properties.PublicAccessBlockConfiguration.BlockPublicAcls == true
+    <<BASE-S3-001: S3 buckets block all public access (BlockPublicAcls must be true)>>
+    Properties.PublicAccessBlockConfiguration.BlockPublicPolicy == true
+    <<BASE-S3-001: S3 buckets block all public access (BlockPublicPolicy must be true)>>
+    Properties.PublicAccessBlockConfiguration.IgnorePublicAcls == true
+    <<BASE-S3-001: S3 buckets block all public access (IgnorePublicAcls must be true)>>
+    Properties.PublicAccessBlockConfiguration.RestrictPublicBuckets == true
+    <<BASE-S3-001: S3 buckets block all public access (RestrictPublicBuckets must be true)>>
+  }
+}
+
+#
+# BASE-S3-002: bucket policies never Allow anonymous principals. FAIL CLOSED (allowlist), same
+# principal allowlist as BASE-IAM-006 (policies/src/rules/principals.ts). Conditions do not
+# scope a "*" grant (use a service principal with aws:SourceArn). Deny statements are not
+# checked (the TLS denies use "*"); NotPrincipal fails in Allow statements only.
+#
+# BEGIN shared principal allowlist variables (identical in iam.guard and s3.guard; test-enforced)
+let starter_principal_resources = Resources
+let starter_principal_keys = ['AWS', 'Service', 'Federated', 'CanonicalUser']
+let starter_principal_safe_pseudo_parameters = [
+  'AWS::AccountId',
+  'AWS::Partition',
+  'AWS::Region',
+  'AWS::URLSuffix'
+]
+let starter_principal_ref_types = ['AWS::IAM::OIDCProvider', 'AWS::IAM::SAMLProvider']
+let starter_principal_getatt_arn_types = ['AWS::IAM::Role', 'AWS::IAM::User']
+# END shared principal allowlist variables
+
+rule BASE_S3_002 when %starter_s3_bucket_policies !empty {
+  %starter_s3_bucket_policies {
+    Properties.PolicyDocument.Statement exists
+    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: bucket policy has no literal Statement list)>>
+    Properties.PolicyDocument.Statement !empty
+    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: bucket policy has no literal Statement list)>>
+    when Properties.PolicyDocument.Statement exists {
+      Properties.PolicyDocument.Statement[*] {
+        this is_struct
+        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: statement is not a literal statement object)>>
+        this[ keys == /^Fn::/ ] empty
+        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: statement is not a literal statement object, e.g. Fn::If)>>
+        Effect IN ['Allow', 'Deny']
+        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Effect is not a literal Allow or Deny)>>
+        when Effect == 'Allow' {
+          NotPrincipal !exists
+          <<BASE-S3-002: Bucket policies never allow anonymous principals (NotPrincipal in an Allow statement grants everyone else)>>
+          # BEGIN shared principal allowlist (identical in iam.guard and s3.guard; test-enforced)
+          Principal is_struct
+          <<BASE-S3-002: Bucket policies never allow anonymous principals (Principal must be a map of AWS/Service/Federated/CanonicalUser; "*" trusts every account)>>
+          Principal[ keys !IN %starter_principal_keys ] empty
+          <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Principal key is not AWS/Service/Federated/CanonicalUser, e.g. Fn::If)>>
+          Principal[ keys IN %starter_principal_keys ] !empty
+          <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Principal names no AWS/Service/Federated/CanonicalUser value)>>
+          Principal.*[*] {
+            this is_string or this is_struct
+            <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: principal value is not a string or an intrinsic function)>>
+            when this is_string {
+              this != /[*?]/
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (wildcard principal)>>
+            }
+            when this is_struct {
+              this !empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              this[ keys !IN ['Ref', 'Fn::GetAtt', 'Fn::Join', 'Fn::Sub'] ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: only Ref, Fn::GetAtt, Fn::Join and Fn::Sub building an ARN are accepted)>>
+              this[ keys == 'Ref' ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              or this[ keys != 'Ref' ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              this[ keys == 'Fn::GetAtt' ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              or this[ keys != 'Fn::GetAtt' ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              this[ keys == 'Fn::Join' ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              or this[ keys != 'Fn::Join' ] empty
+              <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: value is not a single intrinsic function)>>
+              when this.Ref exists {
+                this.Ref is_string
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref target is not a literal logical ID)>>
+                let starter_principal_ref = this.Ref
+                this.Ref IN %starter_principal_safe_pseudo_parameters
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                or %starter_principal_resources[ keys == %starter_principal_ref ] !empty
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                when %starter_principal_resources[ keys == %starter_principal_ref ] !empty {
+                  when %starter_principal_resources[ keys == %starter_principal_ref ].Type !IN %starter_principal_ref_types {
+                    this.Ref !exists
+                    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref names a resource type that is not an IAM principal ARN; custom and third-party types set their own values)>>
+                  }
+                }
+              }
+              when this.'Fn::GetAtt' exists {
+                this.'Fn::GetAtt' is_list or this.'Fn::GetAtt' is_string
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"] or "logicalId.Arn")>>
+                when this.'Fn::GetAtt' is_list {
+                  this.'Fn::GetAtt'[2] !exists
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                  this.'Fn::GetAtt'[0] is_string
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                  this.'Fn::GetAtt'[1] is_string
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                  this.'Fn::GetAtt'[1] == 'Arn'
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must read the Arn attribute)>>
+                  let starter_principal_getatt = this.'Fn::GetAtt'[0]
+                  %starter_principal_resources[ keys == %starter_principal_getatt ] !empty
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must name a resource in the template)>>
+                  when %starter_principal_resources[ keys == %starter_principal_getatt ] !empty {
+                    when %starter_principal_resources[ keys == %starter_principal_getatt ].Type !IN %starter_principal_getatt_arn_types {
+                      this.'Fn::GetAtt' !exists
+                      <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                    }
+                  }
+                }
+                when this.'Fn::GetAtt' is_string {
+                  this.'Fn::GetAtt' == /^[A-Za-z0-9]+\.Arn$/
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be "logicalId.Arn")>>
+                  let starter_principal_getatt_dotted = regex_replace(this.'Fn::GetAtt', "^([A-Za-z0-9]+)\.Arn$", "${1}")
+                  %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must name a resource in the template)>>
+                  when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty {
+                    when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ].Type !IN %starter_principal_getatt_arn_types {
+                      this.'Fn::GetAtt' !exists
+                      <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                    }
+                  }
+                }
+              }
+              when this.'Fn::Join' exists {
+                this.'Fn::Join' is_list
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join must be [delimiter, [parts]])>>
+                this.'Fn::Join'[2] !exists
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join must be [delimiter, [parts]])>>
+                this.'Fn::Join'[0] is_string
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join delimiter is not a literal string)>>
+                this.'Fn::Join'[0] != /[*?]/
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (Fn::Join delimiter contains a wildcard)>>
+                this.'Fn::Join'[1] is_list
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join parts are not a literal list)>>
+                this.'Fn::Join'[1][0] is_string
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join does not start with a literal "arn:" prefix)>>
+                this.'Fn::Join'[1][0] == /^arn:/ or this.'Fn::Join'[0] == ':'
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join does not start with a literal "arn:" prefix)>>
+                this.'Fn::Join'[1][0] == /^arn:/ or this.'Fn::Join'[1][0] == 'arn'
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join does not start with a literal "arn:" prefix)>>
+                this.'Fn::Join'[1][*] {
+                  this is_string or this is_struct
+                  <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join part is not a string or an intrinsic function)>>
+                  when this is_string {
+                    this != /[*?]/
+                    <<BASE-S3-002: Bucket policies never allow anonymous principals (Fn::Join part contains a wildcard)>>
+                  }
+                  when this is_struct {
+                    this !empty
+                    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join part is not a single intrinsic function)>>
+                    this[ keys !IN ['Ref', 'Fn::GetAtt'] ] empty
+                    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join parts may only use Ref and Fn::GetAtt)>>
+                    this[ keys == 'Ref' ] empty
+                    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join part is not a single intrinsic function)>>
+                    or this[ keys != 'Ref' ] empty
+                    <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Join part is not a single intrinsic function)>>
+                    when this.Ref exists {
+                      this.Ref is_string
+                      <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref target is not a literal logical ID)>>
+                      let starter_principal_ref = this.Ref
+                      this.Ref IN %starter_principal_safe_pseudo_parameters
+                      <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                      or %starter_principal_resources[ keys == %starter_principal_ref ] !empty
+                      <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                      when %starter_principal_resources[ keys == %starter_principal_ref ] !empty {
+                        when %starter_principal_resources[ keys == %starter_principal_ref ].Type !IN %starter_principal_ref_types {
+                          this.Ref !exists
+                          <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Ref names a resource type that is not an IAM principal ARN; custom and third-party types set their own values)>>
+                        }
+                      }
+                    }
+                    when this.'Fn::GetAtt' exists {
+                      this.'Fn::GetAtt' is_list or this.'Fn::GetAtt' is_string
+                      <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"] or "logicalId.Arn")>>
+                      when this.'Fn::GetAtt' is_list {
+                        this.'Fn::GetAtt'[2] !exists
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                        this.'Fn::GetAtt'[0] is_string
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                        this.'Fn::GetAtt'[1] is_string
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                        this.'Fn::GetAtt'[1] == 'Arn'
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must read the Arn attribute)>>
+                        let starter_principal_getatt = this.'Fn::GetAtt'[0]
+                        %starter_principal_resources[ keys == %starter_principal_getatt ] !empty
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must name a resource in the template)>>
+                        when %starter_principal_resources[ keys == %starter_principal_getatt ] !empty {
+                          when %starter_principal_resources[ keys == %starter_principal_getatt ].Type !IN %starter_principal_getatt_arn_types {
+                            this.'Fn::GetAtt' !exists
+                            <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                          }
+                        }
+                      }
+                      when this.'Fn::GetAtt' is_string {
+                        this.'Fn::GetAtt' == /^[A-Za-z0-9]+\.Arn$/
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must be "logicalId.Arn")>>
+                        let starter_principal_getatt_dotted = regex_replace(this.'Fn::GetAtt', "^([A-Za-z0-9]+)\.Arn$", "${1}")
+                        %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty
+                        <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt must name a resource in the template)>>
+                        when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty {
+                          when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ].Type !IN %starter_principal_getatt_arn_types {
+                            this.'Fn::GetAtt' !exists
+                            <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              when this.'Fn::Sub' exists {
+                this.'Fn::Sub' is_string
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Sub must be the string form)>>
+                this.'Fn::Sub' == /^arn:([^*?$]|\$\{(AWS::AccountId|AWS::Partition|AWS::Region|AWS::URLSuffix)\})*$/
+                <<BASE-S3-002: Bucket policies never allow anonymous principals (fail closed: Fn::Sub must start with "arn:", contain no wildcard and use only ${AWS::AccountId|Partition|Region|URLSuffix})>>
+              }
+            }
+          }
+          # END shared principal allowlist
+        }
+      }
+    }
+  }
+}
+
+rule BASE_S3_003 when %starter_s3_bucket_policies !empty {
+  %starter_s3_bucket_policies {
+    some Properties.PolicyDocument.Statement[*].Effect == 'Deny'
+    <<BASE-S3-003: Bucket policies deny non-TLS requests (no Deny statement on aws:SecureTransport=false)>>
+    some Properties.PolicyDocument.Statement[ Effect == 'Deny' ].Condition.Bool['aws:SecureTransport'] IN ['false', false]
+    <<BASE-S3-003: Bucket policies deny non-TLS requests (no Deny statement on aws:SecureTransport=false)>>
+  }
+}

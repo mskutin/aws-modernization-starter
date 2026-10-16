@@ -1,0 +1,41 @@
+{
+  "name": "@starter/fn-processor",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "ProcessJob Lambda: loads the job's document from the system of record, computes the deterministic analysis and stores it on the job-state item.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/bundle.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/config": "workspace:*",
+    "@starter/contracts": "workspace:*",
+    "@starter/documents": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/job-state": "workspace:*",
+    "@starter/observability": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@starter/testing": "workspace:*",
+    "@types/aws-lambda": "8.10.164",
+    "esbuild": "0.28.2"
+  }
+}

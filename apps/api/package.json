@@ -1,0 +1,52 @@
+{
+  "name": "@starter/api",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Fastify 5 REST API: job submission, status, OpenAPI, health and graceful shutdown.",
+  "files": [
+    "dist",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js",
+    "dev": "node --watch --enable-source-maps dist/server.js",
+    "migrate": "node dist/migrate.js",
+    "db:bootstrap": "node dist/db-bootstrap.js",
+    "db:prepare": "sh db/prepare-database.sh",
+    "retention": "node dist/retention.js",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/client-sfn": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@fastify/cors": "11.3.1",
+    "@starter/config": "workspace:*",
+    "@starter/contracts": "workspace:*",
+    "@starter/db": "workspace:*",
+    "@starter/documents": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/fn-processor": "workspace:*",
+    "@starter/fn-reconciler": "workspace:*",
+    "@starter/fn-validator": "workspace:*",
+    "@starter/job-state": "workspace:*",
+    "@starter/observability": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "fastify": "5.12.5",
+    "jose": "6.2.12",
+    "pg": "8.23.1",
+    "pino": "10.4.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@starter/testing": "workspace:*",
+    "@types/pg": "8.23.1",
+    "testcontainers": "12.2.0"
+  }
+}

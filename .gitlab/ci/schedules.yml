@@ -1,0 +1,30 @@
+# Scheduled maintenance tasks (ADR 0412). Each runs only in a pipeline whose schedule sets
+# SCHEDULE_TASK on a protected ref, on STARTER_PROTECTED_RUNNER_TAG (empty = the generic runner);
+# task pipelines run nothing else (every other job has
+# `if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/ -> never`). Create one pipeline schedule per
+# task (variable SCHEDULE_TASK) on a protected ref; a fresh project has none.
+#
+#   rescan  container:rescan-verify:<id> + container:rescan:<id> (generated per image component;
+#           needs release signing, STARTER_RELEASE_SIGNING=true)
+#   stale   scheduled:stale-resources (below)
+#   drift   aws:drift   (exists only with AWS_JOBS_ENABLED=true; aws:status reports otherwise)
+#   sweep   aws:sweeper (exists only with AWS_JOBS_ENABLED=true; aws:status reports otherwise)
+
+# Report-only stale-resource check: merged-but-undeleted and inactive branches, stale open MRs,
+# artifacts kept without expiry, old registry tags. Reads the API with its own job token; deletes
+# nothing. Findings => exit 79 (allowed warning); nothing found => passes.
+scheduled:stale-resources:
+  extends: [.node-bare, .protected-runner]
+  stage: verify
+  needs: [{ job: 'policy:gate-integrity', optional: true }]
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $SCHEDULE_TASK == "stale"
+  allow_failure:
+    exit_codes: [79]
+  script:
+    - node tools/ci/src/cli.ts stale-report --out reports/stale
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    expose_as: 'Stale resources'
+    paths: [reports/stale/]

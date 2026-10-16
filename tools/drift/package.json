@@ -1,0 +1,31 @@
+{
+  "name": "@starter/tool-drift",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Opt-in CloudFormation drift detection. Never runs without explicit opt-in and resolvable AWS credentials; offline it reports not-configured.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "starter-drift": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "drift:detect": "tsx src/bin.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "3.1149.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "4.1.0"
+  }
+}

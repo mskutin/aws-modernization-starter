@@ -1,0 +1,18 @@
+{
+  "BudgetName": "starter-prd-monthly",
+  "BudgetType": "COST",
+  "TimeUnit": "MONTHLY",
+  "BudgetLimit": { "Amount": "1500", "Unit": "USD" },
+  "FilterExpression": {
+    "And": [
+      {
+        "Tags": {
+          "Key": "Project",
+          "Values": ["aws-modernization-starter"],
+          "MatchOptions": ["EQUALS"]
+        }
+      },
+      { "Tags": { "Key": "Environment", "Values": ["prod"], "MatchOptions": ["EQUALS"] } }
+    ]
+  }
+}

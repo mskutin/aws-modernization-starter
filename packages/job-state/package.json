@@ -1,0 +1,35 @@
+{
+  "name": "@starter/job-state",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "DynamoDB job-state / idempotency store implementing the shared workflow key layout, plus an in-memory twin for tests.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/contracts": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@starter/testing": "workspace:*"
+  }
+}

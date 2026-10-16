@@ -1,0 +1,18 @@
+# Trivy ignore file (YAML format) for sca:trivy-fs and container:scan:<id>.
+#
+# Rules (enforced by `supply-chain:lint`):
+#   - every entry needs `statement` (why it is safe / what compensates) and
+#     `expired_at` (YYYY-MM-DD, at most 90 days ahead);
+#   - Trivy stops applying an entry after `expired_at`, so the finding fails the
+#     scan again until it is fixed or consciously renewed;
+#   - prefer `paths`/`purls` to scope an exception to one package.
+#
+# Example:
+# vulnerabilities:
+#   - id: CVE-2026-00000
+#     purls: ['pkg:npm/example@1.2.3']
+#     statement: Not reachable — only used by the build toolchain, never shipped in the runtime image. Tracked in #123.
+#     expired_at: 2026-12-31
+vulnerabilities: []
+misconfigurations: []
+secrets: []

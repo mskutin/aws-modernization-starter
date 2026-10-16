@@ -1,0 +1,2374 @@
+{
+  "schemaVersion": 4,
+  "kind": "starter-aws-preflight-evidence",
+  "command": "discover",
+  "complete": true,
+  "gate": {
+    "organization": "member",
+    "readOnlyAssessment": "verified-read-only",
+    "computedLevel": "verified-read-only",
+    "roleKind": "iam-identity-center-permission-set",
+    "principalRecheck": "same-principal"
+  },
+  "tool": {
+    "name": "@starter/tool-aws-preflight",
+    "version": "0.1.0",
+    "gitCommit": "<commit>",
+    "sourceSha256": "<source-sha256>",
+    "gitDirty": "<clean-or-dirty>"
+  },
+  "run": {
+    "id": "20261014T053000Z-a1b2c3",
+    "startedAt": "2026-10-14T05:30:00.000Z",
+    "finishedAt": "2026-10-14T05:30:00.000Z"
+  },
+  "awsCli": {
+    "version": "2.35.11",
+    "verifiedAgainst": "2.35.11",
+    "path": "<box>/bin/aws",
+    "realpath": "<box>/bin/aws",
+    "sha256": "0a5fb2d3a9e42d8cd0cd06a68ffdbc8cdd3e26ad2ec801c47867e457e7433e1a"
+  },
+  "regions": {
+    "workload": "ap-southeast-1",
+    "global": "us-east-1"
+  },
+  "childEnvironment": {
+    "passedThroughNames": ["HOME", "LANG", "PATH"],
+    "fixed": {
+      "AWS_PAGER": "",
+      "AWS_CLI_AUTO_PROMPT": "off",
+      "AWS_RETRY_MODE": "standard",
+      "AWS_MAX_ATTEMPTS": "3",
+      "AWS_EC2_METADATA_DISABLED": "true",
+      "AWS_CLI_ERROR_FORMAT": "legacy",
+      "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "true",
+      "PYTHONNOUSERSITE": "1"
+    }
+  },
+  "inputs": {
+    "qualifiers": ["starter", "hnb659fds"],
+    "vpcFilter": null,
+    "kmsKeyRefs": [],
+    "boundaryPolicyArn": null,
+    "dbEngineVersion": "17.9",
+    "callTimeoutSeconds": 150,
+    "attestationGiven": false,
+    "acceptanceGiven": false,
+    "awsConfig": {
+      "profileKeys": ["output", "region", "sso_account_id", "sso_role_name", "sso_session"],
+      "ssoSessionKeys": ["sso_region", "sso_registration_scopes", "sso_start_url"]
+    }
+  },
+  "notes": [
+    "The tool issued only the allowlisted get-/list-/describe- AWS CLI calls recorded below (plus a local `aws --version`). Before starting the AWS CLI it refused any configuration in $HOME/.aws that could replace, extend or redirect a call (README \"Trust assumptions\"); it cannot observe what the CLI or the environment did beyond that.",
+    "gate.readOnlyAssessment: verified-read-only = only metadata-only AWS managed policies and policies that allow nothing but the allowlisted actions; attested = a human statement, not a verification; write-capable-accepted = a human accepted a write-capable identity for this run, so the read-only guarantee rests on the tool alone.",
+    "gate.organization: unknown means DescribeOrganization was denied; membership (and \"not the management account\") is then NOT evidenced.",
+    "access-denied means UNKNOWN visibility for this identity, not absence of the resource.",
+    "Sanitized output: see tools/aws-preflight/README.md (Sanitization). Raw responses stay in the operator-private raw directory."
+  ],
+  "identity": {
+    "account": "********3333",
+    "principalType": "assumed-role",
+    "role": "AccountDiscovery",
+    "roleKind": "iam-identity-center-permission-set",
+    "sessionName": "<masked>",
+    "readOnlyAssessment": "verified-read-only",
+    "computedLevel": "verified-read-only",
+    "policies": [
+      {
+        "kind": "aws-managed",
+        "name": "AWSBudgetsReadOnlyAccess",
+        "arn": "arn:aws:iam::aws:policy/AWSBudgetsReadOnlyAccess",
+        "category": "metadata-only"
+      },
+      {
+        "kind": "aws-managed",
+        "name": "ServiceQuotasReadOnlyAccess",
+        "arn": "arn:aws:iam::aws:policy/ServiceQuotasReadOnlyAccess",
+        "category": "metadata-only"
+      },
+      {
+        "kind": "inline",
+        "name": "AwsSSOInlinePolicy",
+        "category": "allowlisted-only",
+        "documentSha256": "e28c9c6fa84f946261fb07da2443f2eb4c41ffa865cc810eade681356c34786a",
+        "allowStatements": 4,
+        "denyStatements": 0,
+        "nonAllowlistedActions": []
+      }
+    ],
+    "permissionsBoundary": null,
+    "reasons": {
+      "writeCapable": [],
+      "dataCapable": [],
+      "unverified": []
+    },
+    "note": "verified-read-only: only metadata-only AWS managed policies and inline/customer policies that allow nothing but the allowlisted actions. attested: an operator statement recorded verbatim, NOT a verification. write-capable-accepted: a human accepted a write-capable identity for this run; the read-only guarantee then rests on the tool alone (allowlist, exec boundary, configuration refusals).",
+    "organization": {
+      "status": "member",
+      "organizationId": "<org-1>",
+      "managementAccount": "<other-account-1>",
+      "featureSet": "ALL"
+    },
+    "recheck": {
+      "status": "same-principal"
+    }
+  },
+  "summary": {
+    "calls": 88,
+    "byStatus": {
+      "ok": 80,
+      "access-denied": 3,
+      "not-found": 3,
+      "error": 0,
+      "timeout": 0,
+      "skipped": 2
+    },
+    "byArea": {
+      "org-iam": {
+        "ok": 22,
+        "access-denied": 3,
+        "not-found": 3,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 1
+      },
+      "network-edge": {
+        "ok": 17,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      },
+      "quotas-services": {
+        "ok": 32,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 1
+      },
+      "finops": {
+        "ok": 2,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      },
+      "identity": {
+        "ok": 7,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "probes": [
+    {
+      "id": "identity.caller@ap-southeast-1",
+      "probe": "identity.caller",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "sts:GetCallerIdentity",
+      "command": "aws sts get-caller-identity --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Account": "<sandbox-account>"
+      }
+    },
+    {
+      "id": "identity.role@ap-southeast-1",
+      "probe": "identity.role",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/aws-reserved/sso.amazonaws.com/ap-southeast-1/",
+          "RoleName": "AWSReservedSSO_AccountDiscovery_0123456789abcdef",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/AWSReservedSSO_AccountDiscovery_0123456789abcdef",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "identity.role-managed-policies@ap-southeast-1",
+      "probe": "identity.role-managed-policies",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:ListAttachedRolePolicies",
+      "command": "aws iam list-attached-role-policies --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AttachedPolicies": [
+          {
+            "PolicyName": "AWSBudgetsReadOnlyAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/AWSBudgetsReadOnlyAccess"
+          },
+          {
+            "PolicyName": "ServiceQuotasReadOnlyAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/ServiceQuotasReadOnlyAccess"
+          }
+        ]
+      }
+    },
+    {
+      "id": "identity.role-inline-policies@ap-southeast-1",
+      "probe": "identity.role-inline-policies",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:ListRolePolicies",
+      "command": "aws iam list-role-policies --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "PolicyNames": ["AwsSSOInlinePolicy"]
+      }
+    },
+    {
+      "id": "identity.role-inline-policy#1@ap-southeast-1",
+      "probe": "identity.role-inline-policy",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRolePolicy",
+      "command": "aws iam get-role-policy --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --policy-name=AwsSSOInlinePolicy --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "RoleName": "AWSReservedSSO_AccountDiscovery_0123456789abcdef",
+        "PolicyName": "AwsSSOInlinePolicy"
+      }
+    },
+    {
+      "id": "identity.organization@us-east-1",
+      "probe": "identity.organization",
+      "area": "identity",
+      "phase": "identity",
+      "region": "us-east-1",
+      "iamAction": "organizations:DescribeOrganization",
+      "command": "aws organizations describe-organization --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Organization": {
+          "Id": "<org-1>",
+          "Arn": "arn:aws:organizations::<other-account-1>:organization/<org-1>",
+          "FeatureSet": "ALL",
+          "MasterAccountArn": "arn:aws:organizations::<other-account-1>:account/<org-1>/<other-account-1>",
+          "MasterAccountId": "<other-account-1>",
+          "AvailablePolicyTypes": [
+            {
+              "Type": "SERVICE_CONTROL_POLICY",
+              "Status": "ENABLED"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a.org.parents@us-east-1",
+      "probe": "a.org.parents",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "organizations:ListParents",
+      "command": "aws organizations list-parents --child-id=<account> --max-items 10 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "access-denied",
+      "truncated": false,
+      "attempts": 1,
+      "errorCode": "AccessDeniedException"
+    },
+    {
+      "id": "a.org.scps@us-east-1",
+      "probe": "a.org.scps",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "organizations:ListPoliciesForTarget",
+      "command": "aws organizations list-policies-for-target --target-id=<account> --filter SERVICE_CONTROL_POLICY --max-items 100 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "access-denied",
+      "truncated": false,
+      "attempts": 1,
+      "errorCode": "AccessDeniedException"
+    },
+    {
+      "id": "a.org.rcps@us-east-1",
+      "probe": "a.org.rcps",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "organizations:ListPoliciesForTarget",
+      "command": "aws organizations list-policies-for-target --target-id=<account> --filter RESOURCE_CONTROL_POLICY --max-items 100 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "access-denied",
+      "truncated": false,
+      "attempts": 1,
+      "errorCode": "AccessDeniedException"
+    },
+    {
+      "id": "a.org.effective-tag-policy@us-east-1",
+      "probe": "a.org.effective-tag-policy",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "organizations:DescribeEffectivePolicy",
+      "command": "aws organizations describe-effective-policy --policy-type TAG_POLICY --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "EffectivePolicy": {
+          "LastUpdatedTimestamp": "2026-09-01T00:00:00+00:00",
+          "TargetId": "<sandbox-account>",
+          "PolicyType": "TAG_POLICY",
+          "summary": [
+            {
+              "tag": "CostCenter",
+              "hasAllowedValues": true,
+              "enforcedFor": ["ec2:instance"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a.org.effective-ec2-declarative-policy@us-east-1",
+      "probe": "a.org.effective-ec2-declarative-policy",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "organizations:DescribeEffectivePolicy",
+      "command": "aws organizations describe-effective-policy --policy-type DECLARATIVE_POLICY_EC2 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "EffectivePolicy": {
+          "TargetId": "<sandbox-account>",
+          "PolicyType": "DECLARATIVE_POLICY_EC2",
+          "summary": {
+            "ec2_attributes.vpc_block_public_access.internet_gateway_block.mode": "block_ingress"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.iam.account-summary@ap-southeast-1",
+      "probe": "a.iam.account-summary",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetAccountSummary",
+      "command": "aws iam get-account-summary --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "SummaryMap": {
+          "Roles": 12,
+          "Policies": 3,
+          "RolesQuota": 1000
+        }
+      }
+    },
+    {
+      "id": "a.iam.account-aliases@ap-southeast-1",
+      "probe": "a.iam.account-aliases",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:ListAccountAliases",
+      "command": "aws iam list-account-aliases --max-items 10 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AccountAliases": ["<account-alias-1>"]
+      }
+    },
+    {
+      "id": "a.iam.boundary-policies@ap-southeast-1",
+      "probe": "a.iam.boundary-policies",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:ListPolicies",
+      "command": "aws iam list-policies --scope Local --policy-usage-filter PermissionsBoundary --only-attached --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Policies": [
+          {
+            "PolicyName": "ExamplePermissionsBoundary",
+            "PolicyId": "<iam-unique-id-2>",
+            "Arn": "arn:aws:iam::<sandbox-account>:policy/ExamplePermissionsBoundary",
+            "Path": "/",
+            "DefaultVersionId": "v3",
+            "AttachmentCount": 4,
+            "PermissionsBoundaryUsageCount": 4,
+            "IsAttachable": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "a.iam.boundary-policy@ap-southeast-1",
+      "probe": "a.iam.boundary-policy",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetPolicy",
+      "command": "aws iam get-policy --policy-arn=<boundaryPolicyArn> --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "skipped",
+      "truncated": false,
+      "attempts": 0,
+      "skipReason": "not requested (no --boundary-policy-arn)"
+    },
+    {
+      "id": "a.cdk.deploy-role[starter]@ap-southeast-1",
+      "probe": "a.cdk.deploy-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-starter-deploy-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-starter-deploy-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-starter-deploy-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.deploy-role[hnb659fds]@ap-southeast-1",
+      "probe": "a.cdk.deploy-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-hnb659fds-deploy-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-hnb659fds-deploy-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-hnb659fds-deploy-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.file-publishing-role[starter]@ap-southeast-1",
+      "probe": "a.cdk.file-publishing-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-starter-file-publishing-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-starter-file-publishing-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-starter-file-publishing-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.file-publishing-role[hnb659fds]@ap-southeast-1",
+      "probe": "a.cdk.file-publishing-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-hnb659fds-file-publishing-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-hnb659fds-file-publishing-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-hnb659fds-file-publishing-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.image-publishing-role[starter]@ap-southeast-1",
+      "probe": "a.cdk.image-publishing-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-starter-image-publishing-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-starter-image-publishing-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-starter-image-publishing-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.image-publishing-role[hnb659fds]@ap-southeast-1",
+      "probe": "a.cdk.image-publishing-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-hnb659fds-image-publishing-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-hnb659fds-image-publishing-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-hnb659fds-image-publishing-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.lookup-role[starter]@ap-southeast-1",
+      "probe": "a.cdk.lookup-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-starter-lookup-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-starter-lookup-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-starter-lookup-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.lookup-role[hnb659fds]@ap-southeast-1",
+      "probe": "a.cdk.lookup-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-hnb659fds-lookup-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-hnb659fds-lookup-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-hnb659fds-lookup-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.cfn-exec-role[starter]@ap-southeast-1",
+      "probe": "a.cdk.cfn-exec-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-starter-cfn-exec-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-starter-cfn-exec-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-starter-cfn-exec-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cdk.cfn-exec-role[hnb659fds]@ap-southeast-1",
+      "probe": "a.cdk.cfn-exec-role",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=cdk-hnb659fds-cfn-exec-role-<account>-ap-southeast-1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/",
+          "RoleName": "cdk-hnb659fds-cfn-exec-role-<sandbox-account>-ap-southeast-1",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/cdk-hnb659fds-cfn-exec-role-<sandbox-account>-ap-southeast-1",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "a.cfn.cdk-toolkit-stack@ap-southeast-1",
+      "probe": "a.cfn.cdk-toolkit-stack",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "cloudformation:DescribeStacks",
+      "command": "aws cloudformation describe-stacks --stack-name CDKToolkit --max-items 1 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Stacks": [
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/CDKToolkit/<uuid-1>",
+            "StackName": "CDKToolkit",
+            "CreationTime": "2026-01-01T00:00:00+00:00",
+            "StackStatus": "UPDATE_COMPLETE",
+            "Parameters": [
+              {
+                "ParameterKey": "TrustedAccounts",
+                "ParameterValue": "<other-account-2>"
+              },
+              {
+                "ParameterKey": "Qualifier",
+                "ParameterValue": "hnb659fds"
+              },
+              {
+                "ParameterKey": "CloudFormationExecutionPolicies",
+                "ParameterValue": "arn:aws:iam::aws:policy/AdministratorAccess"
+              }
+            ],
+            "Outputs": [
+              {
+                "OutputKey": "BucketName",
+                "OutputValue": "cdk-hnb659fds-assets-<sandbox-account>-ap-southeast-1"
+              },
+              {
+                "OutputKey": "BucketDomainName",
+                "OutputValue": "cdk-hnb659fds-assets-<sandbox-account>-ap-southeast-1.s3.ap-southeast-1.amazonaws.com"
+              },
+              {
+                "OutputKey": "BootstrapVersion",
+                "OutputValue": "29"
+              }
+            ],
+            "Tags": {
+              "keys": ["owner"]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "a.cfn.cdk-toolkit-stack@us-east-1",
+      "probe": "a.cfn.cdk-toolkit-stack",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "cloudformation:DescribeStacks",
+      "command": "aws cloudformation describe-stacks --stack-name CDKToolkit --max-items 1 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "not-found",
+      "truncated": false,
+      "attempts": 1,
+      "errorCode": "ValidationError"
+    },
+    {
+      "id": "a.cfn.stacks@ap-southeast-1",
+      "probe": "a.cfn.stacks",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "cloudformation:ListStacks",
+      "command": "aws cloudformation list-stacks --stack-status-filter CREATE_IN_PROGRESS CREATE_FAILED CREATE_COMPLETE ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_COMPLETE UPDATE_FAILED UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_ROLLBACK_COMPLETE REVIEW_IN_PROGRESS IMPORT_IN_PROGRESS IMPORT_COMPLETE IMPORT_ROLLBACK_IN_PROGRESS IMPORT_ROLLBACK_FAILED IMPORT_ROLLBACK_COMPLETE --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "StackSummaries": [
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/CDKToolkit/<uuid-1>",
+            "StackName": "CDKToolkit",
+            "CreationTime": "2026-01-01T00:00:00+00:00",
+            "StackStatus": "UPDATE_COMPLETE"
+          },
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/starter-cdk-toolkit/<uuid-2>",
+            "StackName": "starter-cdk-toolkit",
+            "CreationTime": "2026-01-02T00:00:00+00:00",
+            "StackStatus": "CREATE_COMPLETE"
+          },
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/<stack-1>/<uuid-3>",
+            "StackName": "<stack-1>",
+            "CreationTime": "2026-01-03T00:00:00+00:00",
+            "StackStatus": "CREATE_COMPLETE"
+          },
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/<stack-2>/<uuid-4>",
+            "StackName": "<stack-2>",
+            "CreationTime": "2026-02-01T00:00:00+00:00",
+            "StackStatus": "CREATE_COMPLETE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a.cfn.stacks@us-east-1",
+      "probe": "a.cfn.stacks",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "cloudformation:ListStacks",
+      "command": "aws cloudformation list-stacks --stack-status-filter CREATE_IN_PROGRESS CREATE_FAILED CREATE_COMPLETE ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE DELETE_IN_PROGRESS DELETE_FAILED UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_COMPLETE UPDATE_FAILED UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS UPDATE_ROLLBACK_COMPLETE REVIEW_IN_PROGRESS IMPORT_IN_PROGRESS IMPORT_COMPLETE IMPORT_ROLLBACK_IN_PROGRESS IMPORT_ROLLBACK_FAILED IMPORT_ROLLBACK_COMPLETE --max-items 200 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "StackSummaries": [
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/CDKToolkit/<uuid-1>",
+            "StackName": "CDKToolkit",
+            "CreationTime": "2026-01-01T00:00:00+00:00",
+            "StackStatus": "UPDATE_COMPLETE"
+          },
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/starter-cdk-toolkit/<uuid-2>",
+            "StackName": "starter-cdk-toolkit",
+            "CreationTime": "2026-01-02T00:00:00+00:00",
+            "StackStatus": "CREATE_COMPLETE"
+          },
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/<stack-1>/<uuid-3>",
+            "StackName": "<stack-1>",
+            "CreationTime": "2026-01-03T00:00:00+00:00",
+            "StackStatus": "CREATE_COMPLETE"
+          },
+          {
+            "StackId": "arn:aws:cloudformation:ap-southeast-1:<sandbox-account>:stack/<stack-2>/<uuid-4>",
+            "StackName": "<stack-2>",
+            "CreationTime": "2026-02-01T00:00:00+00:00",
+            "StackStatus": "CREATE_COMPLETE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a.cfn.hook-types-public@ap-southeast-1",
+      "probe": "a.cfn.hook-types-public",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "cloudformation:ListTypes",
+      "command": "aws cloudformation list-types --visibility PUBLIC --type HOOK --filters Category=ACTIVATED --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "hookTypeCount": 1,
+        "hookTypeNames": ["AWS::ControlTower::Hook"]
+      }
+    },
+    {
+      "id": "a.cfn.hook-types-private@ap-southeast-1",
+      "probe": "a.cfn.hook-types-private",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "cloudformation:ListTypes",
+      "command": "aws cloudformation list-types --visibility PRIVATE --type HOOK --filters Category=ACTIVATED --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "hookTypeCount": 0,
+        "hookTypeNames": []
+      }
+    },
+    {
+      "id": "a.cdk.bootstrap-version[starter]@ap-southeast-1",
+      "probe": "a.cdk.bootstrap-version",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ssm:GetParameter",
+      "command": "aws ssm get-parameter --name=/cdk-bootstrap/starter/version --no-with-decryption --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "not-found",
+      "truncated": false,
+      "attempts": 1,
+      "errorCode": "ParameterNotFound"
+    },
+    {
+      "id": "a.cdk.bootstrap-version[starter]@us-east-1",
+      "probe": "a.cdk.bootstrap-version",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "ssm:GetParameter",
+      "command": "aws ssm get-parameter --name=/cdk-bootstrap/starter/version --no-with-decryption --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "not-found",
+      "truncated": false,
+      "attempts": 1,
+      "errorCode": "ParameterNotFound"
+    },
+    {
+      "id": "a.cdk.bootstrap-version[hnb659fds]@ap-southeast-1",
+      "probe": "a.cdk.bootstrap-version",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ssm:GetParameter",
+      "command": "aws ssm get-parameter --name=/cdk-bootstrap/hnb659fds/version --no-with-decryption --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Parameter": {
+          "Name": "/cdk-bootstrap/hnb659fds/version",
+          "Type": "String",
+          "Version": 3,
+          "Value": "29"
+        }
+      }
+    },
+    {
+      "id": "a.cdk.bootstrap-version[hnb659fds]@us-east-1",
+      "probe": "a.cdk.bootstrap-version",
+      "area": "org-iam",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "ssm:GetParameter",
+      "command": "aws ssm get-parameter --name=/cdk-bootstrap/hnb659fds/version --no-with-decryption --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Parameter": {
+          "Name": "/cdk-bootstrap/hnb659fds/version",
+          "Type": "String",
+          "Version": 3,
+          "Value": "29"
+        }
+      }
+    },
+    {
+      "id": "b.ec2.availability-zones@ap-southeast-1",
+      "probe": "b.ec2.availability-zones",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeAvailabilityZones",
+      "command": "aws ec2 describe-availability-zones --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AvailabilityZones": [
+          {
+            "ZoneName": "ap-southeast-1a",
+            "ZoneId": "apse1-az1",
+            "State": "available",
+            "ZoneType": "availability-zone",
+            "RegionName": "ap-southeast-1"
+          },
+          {
+            "ZoneName": "ap-southeast-1b",
+            "ZoneId": "apse1-az2",
+            "State": "available",
+            "ZoneType": "availability-zone",
+            "RegionName": "ap-southeast-1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.account-attributes@ap-southeast-1",
+      "probe": "b.ec2.account-attributes",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeAccountAttributes",
+      "command": "aws ec2 describe-account-attributes --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AccountAttributes": [
+          {
+            "AttributeName": "default-vpc",
+            "AttributeValues": [
+              {
+                "AttributeValue": "<vpc-1>"
+              }
+            ]
+          },
+          {
+            "AttributeName": "max-elastic-ips",
+            "AttributeValues": [
+              {
+                "AttributeValue": "5"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.vpcs@ap-southeast-1",
+      "probe": "b.ec2.vpcs",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeVpcs",
+      "command": "aws ec2 describe-vpcs --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Vpcs": [
+          {
+            "VpcId": "<vpc-1>",
+            "State": "available",
+            "CidrBlock": "10.20.0.0/16",
+            "IsDefault": false,
+            "OwnerId": "<sandbox-account>",
+            "Tags": {
+              "keys": ["Name"],
+              "name": "<name-2>"
+            }
+          },
+          {
+            "VpcId": "<vpc-2>",
+            "State": "available",
+            "CidrBlock": "10.30.0.0/16",
+            "IsDefault": false,
+            "OwnerId": "<sandbox-account>",
+            "Tags": {
+              "keys": ["Name"],
+              "name": "starter-sbx-vpc"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.subnets@ap-southeast-1",
+      "probe": "b.ec2.subnets",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeSubnets",
+      "command": "aws ec2 describe-subnets --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Subnets": [
+          {
+            "SubnetId": "<subnet-1>",
+            "VpcId": "<vpc-1>",
+            "SubnetArn": "arn:aws:ec2:ap-southeast-1:<sandbox-account>:subnet/<subnet-1>",
+            "AvailabilityZone": "ap-southeast-1a",
+            "AvailabilityZoneId": "apse1-az1",
+            "CidrBlock": "10.20.1.0/24",
+            "AvailableIpAddressCount": 250,
+            "MapPublicIpOnLaunch": false,
+            "OwnerId": "<sandbox-account>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.route-tables@ap-southeast-1",
+      "probe": "b.ec2.route-tables",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeRouteTables",
+      "command": "aws ec2 describe-route-tables --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "RouteTables": [
+          {
+            "RouteTableId": "<rtb-1>",
+            "VpcId": "<vpc-1>",
+            "OwnerId": "<sandbox-account>",
+            "Associations": [
+              {
+                "Main": true,
+                "RouteTableAssociationId": "<rtbassoc-1>",
+                "RouteTableId": "<rtb-1>"
+              }
+            ],
+            "Routes": [
+              {
+                "DestinationCidrBlock": "10.20.0.0/16",
+                "GatewayId": "local",
+                "Origin": "CreateRouteTable",
+                "State": "active"
+              },
+              {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NatGatewayId": "<nat-1>",
+                "Origin": "CreateRoute",
+                "State": "active"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.internet-gateways@ap-southeast-1",
+      "probe": "b.ec2.internet-gateways",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeInternetGateways",
+      "command": "aws ec2 describe-internet-gateways --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "InternetGateways": [
+          {
+            "InternetGatewayId": "<igw-1>",
+            "OwnerId": "<sandbox-account>",
+            "Attachments": [
+              {
+                "VpcId": "<vpc-1>",
+                "State": "available"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.nat-gateways@ap-southeast-1",
+      "probe": "b.ec2.nat-gateways",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeNatGateways",
+      "command": "aws ec2 describe-nat-gateways --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "NatGateways": [
+          {
+            "NatGatewayId": "<nat-1>",
+            "SubnetId": "<subnet-1>",
+            "VpcId": "<vpc-1>",
+            "State": "available",
+            "ConnectivityType": "public",
+            "NatGatewayAddresses": [
+              {
+                "AllocationId": "<eipalloc-1>",
+                "IsPrimary": true,
+                "Status": "succeeded"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.vpc-endpoints@ap-southeast-1",
+      "probe": "b.ec2.vpc-endpoints",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeVpcEndpoints",
+      "command": "aws ec2 describe-vpc-endpoints --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "VpcEndpoints": [
+          {
+            "VpcEndpointId": "<vpce-1>",
+            "VpcEndpointType": "Gateway",
+            "VpcId": "<vpc-1>",
+            "ServiceName": "com.amazonaws.ap-southeast-1.s3",
+            "State": "available",
+            "RouteTableIds": ["<rtb-1>"],
+            "OwnerId": "<sandbox-account>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.cloudfront-prefix-list@ap-southeast-1",
+      "probe": "b.ec2.cloudfront-prefix-list",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeManagedPrefixLists",
+      "command": "aws ec2 describe-managed-prefix-lists --filters Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing --max-items 10 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "PrefixLists": [
+          {
+            "PrefixListId": "pl-31a34658",
+            "PrefixListName": "com.amazonaws.global.cloudfront.origin-facing",
+            "PrefixListArn": "arn:aws:ec2:ap-southeast-1:aws:prefix-list/pl-31a34658",
+            "AddressFamily": "IPv4",
+            "State": "create-complete",
+            "MaxEntries": 55,
+            "Version": 12,
+            "OwnerId": "AWS"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.ec2.vpc-bpa-options@ap-southeast-1",
+      "probe": "b.ec2.vpc-bpa-options",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeVpcBlockPublicAccessOptions",
+      "command": "aws ec2 describe-vpc-block-public-access-options --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "VpcBlockPublicAccessOptions": {
+          "AwsAccountId": "<sandbox-account>",
+          "AwsRegion": "ap-southeast-1",
+          "State": "default-state",
+          "InternetGatewayBlockMode": "off"
+        }
+      }
+    },
+    {
+      "id": "b.ec2.vpc-bpa-exclusions@ap-southeast-1",
+      "probe": "b.ec2.vpc-bpa-exclusions",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ec2:DescribeVpcBlockPublicAccessExclusions",
+      "command": "aws ec2 describe-vpc-block-public-access-exclusions --max-results 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "VpcBlockPublicAccessExclusions": []
+      }
+    },
+    {
+      "id": "b.elbv2.account-limits@ap-southeast-1",
+      "probe": "b.elbv2.account-limits",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "elasticloadbalancing:DescribeAccountLimits",
+      "command": "aws elbv2 describe-account-limits --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Limits": [
+          {
+            "Name": "application-load-balancers",
+            "Max": "50"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.route53.hosted-zones@ap-southeast-1",
+      "probe": "b.route53.hosted-zones",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "route53:ListHostedZones",
+      "command": "aws route53 list-hosted-zones --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "HostedZones": [
+          {
+            "Id": "<hostedzone-1>",
+            "Name": "<domain-1>.com",
+            "Config": {
+              "PrivateZone": false
+            },
+            "ResourceRecordSetCount": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.acm.certificates@ap-southeast-1",
+      "probe": "b.acm.certificates",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "acm:ListCertificates",
+      "command": "aws acm list-certificates --includes keyTypes=RSA_1024,RSA_2048,RSA_3072,RSA_4096,EC_prime256v1,EC_secp384r1,EC_secp521r1 --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "CertificateSummaryList": []
+      }
+    },
+    {
+      "id": "b.acm.certificates@us-east-1",
+      "probe": "b.acm.certificates",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "acm:ListCertificates",
+      "command": "aws acm list-certificates --includes keyTypes=RSA_1024,RSA_2048,RSA_3072,RSA_4096,EC_prime256v1,EC_secp384r1,EC_secp521r1 --max-items 100 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "CertificateSummaryList": [
+          {
+            "CertificateArn": "arn:aws:acm:us-east-1:<sandbox-account>:certificate/<uuid-5>",
+            "DomainName": "*.<domain-1>.com",
+            "SubjectAlternativeNameSummaries": ["<domain-1>.com", "*.<domain-1>.com"],
+            "Status": "ISSUED",
+            "Type": "AMAZON_ISSUED",
+            "KeyAlgorithm": "RSA_2048",
+            "InUse": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.wafv2.web-acls-regional@ap-southeast-1",
+      "probe": "b.wafv2.web-acls-regional",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "wafv2:ListWebACLs",
+      "command": "aws wafv2 list-web-acls --scope REGIONAL --limit 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "WebACLs": [
+          {
+            "Id": "<uuid-6>",
+            "ARN": "arn:aws:wafv2:us-east-1:<sandbox-account>:global/webacl/<web-acl-1>/<uuid-6>",
+            "Name": "<web-acl-1>",
+            "fmsManaged": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "b.wafv2.web-acls-cloudfront@us-east-1",
+      "probe": "b.wafv2.web-acls-cloudfront",
+      "area": "network-edge",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "wafv2:ListWebACLs",
+      "command": "aws wafv2 list-web-acls --scope CLOUDFRONT --limit 100 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "WebACLs": [
+          {
+            "Id": "<uuid-6>",
+            "ARN": "arn:aws:wafv2:us-east-1:<sandbox-account>:global/webacl/<web-acl-1>/<uuid-6>",
+            "Name": "<web-acl-1>",
+            "fmsManaged": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.lambda.account-settings@ap-southeast-1",
+      "probe": "c.lambda.account-settings",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "lambda:GetAccountSettings",
+      "command": "aws lambda get-account-settings --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AccountLimit": {
+          "TotalCodeSize": 80530636800,
+          "CodeSizeUnzipped": 262144000,
+          "ConcurrentExecutions": 10,
+          "UnreservedConcurrentExecutions": 10
+        },
+        "AccountUsage": {
+          "TotalCodeSize": 0,
+          "FunctionCount": 0
+        }
+      }
+    },
+    {
+      "id": "c.quotas.lambda@ap-southeast-1",
+      "probe": "c.quotas.lambda",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code lambda --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "lambda",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.fargate@ap-southeast-1",
+      "probe": "c.quotas.fargate",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code fargate --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "fargate",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.ecs@ap-southeast-1",
+      "probe": "c.quotas.ecs",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code ecs --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "ecs",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.vpc@ap-southeast-1",
+      "probe": "c.quotas.vpc",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code vpc --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "vpc",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.elasticloadbalancing@ap-southeast-1",
+      "probe": "c.quotas.elasticloadbalancing",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code elasticloadbalancing --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "elasticloadbalancing",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.states@ap-southeast-1",
+      "probe": "c.quotas.states",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code states --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "states",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.dynamodb@ap-southeast-1",
+      "probe": "c.quotas.dynamodb",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code dynamodb --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "dynamodb",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.kms@ap-southeast-1",
+      "probe": "c.quotas.kms",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code kms --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "kms",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.ecr@ap-southeast-1",
+      "probe": "c.quotas.ecr",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code ecr --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "ecr",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.logs@ap-southeast-1",
+      "probe": "c.quotas.logs",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code logs --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "logs",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.cloudformation@ap-southeast-1",
+      "probe": "c.quotas.cloudformation",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code cloudformation --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "cloudformation",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.rds@ap-southeast-1",
+      "probe": "c.quotas.rds",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code rds --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "rds",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.cloudfront@us-east-1",
+      "probe": "c.quotas.cloudfront",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "servicequotas:ListServiceQuotas",
+      "command": "aws service-quotas list-service-quotas --service-code cloudfront --max-items 200 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quotas": [
+          {
+            "ServiceCode": "cloudfront",
+            "QuotaCode": "L-B99A9384",
+            "QuotaName": "Concurrent executions",
+            "Value": 10,
+            "Unit": "None",
+            "Adjustable": true,
+            "GlobalQuota": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.quotas.ec2-elastic-ips@ap-southeast-1",
+      "probe": "c.quotas.ec2-elastic-ips",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:GetServiceQuota",
+      "command": "aws service-quotas get-service-quota --service-code ec2 --quota-code L-0263D0A3 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quota": {
+          "ServiceCode": "ec2",
+          "QuotaCode": "L-0263D0A3",
+          "QuotaName": "EC2-VPC Elastic IPs",
+          "Value": 5,
+          "Adjustable": true
+        }
+      }
+    },
+    {
+      "id": "c.quotas.lambda-concurrency-default@ap-southeast-1",
+      "probe": "c.quotas.lambda-concurrency-default",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:GetAWSDefaultServiceQuota",
+      "command": "aws service-quotas get-aws-default-service-quota --service-code lambda --quota-code L-B99A9384 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Quota": {
+          "ServiceCode": "lambda",
+          "QuotaCode": "L-B99A9384",
+          "QuotaName": "Concurrent executions",
+          "Value": 1000,
+          "Adjustable": true
+        }
+      }
+    },
+    {
+      "id": "c.quotas.lambda-concurrency-requests@ap-southeast-1",
+      "probe": "c.quotas.lambda-concurrency-requests",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "servicequotas:ListRequestedServiceQuotaChangeHistoryByQuota",
+      "command": "aws service-quotas list-requested-service-quota-change-history-by-quota --service-code lambda --quota-code L-B99A9384 --max-items 20 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "RequestedQuotas": [
+          {
+            "Status": "CASE_OPENED",
+            "DesiredValue": 1000,
+            "Created": "2026-10-01T00:00:00+00:00",
+            "LastUpdated": "2026-10-02T00:00:00+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.rds.engine-version@ap-southeast-1",
+      "probe": "c.rds.engine-version",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "rds:DescribeDBEngineVersions",
+      "command": "aws rds describe-db-engine-versions --engine postgres --engine-version=17.9 --max-items 10 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "DBEngineVersions": [
+          {
+            "Engine": "postgres",
+            "EngineVersion": "17.9",
+            "DBParameterGroupFamily": "postgres17",
+            "Status": "available",
+            "SupportedCACertificateIdentifiers": ["rds-ca-rsa2048-g1", "rds-ca-ecc384-g1"],
+            "ValidUpgradeTarget": [
+              {
+                "EngineVersion": "17.10",
+                "IsMajorVersionUpgrade": false,
+                "AutoUpgrade": false
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.rds.engine-catalog@ap-southeast-1",
+      "probe": "c.rds.engine-catalog",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "rds:DescribeDBEngineVersions",
+      "command": "aws rds describe-db-engine-versions --engine postgres --max-items 300 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "DBEngineVersions": [
+          {
+            "Engine": "postgres",
+            "EngineVersion": "17.9",
+            "DBParameterGroupFamily": "postgres17",
+            "Status": "available"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.rds.orderable.db-t4g-micro@ap-southeast-1",
+      "probe": "c.rds.orderable.db-t4g-micro",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "rds:DescribeOrderableDBInstanceOptions",
+      "command": "aws rds describe-orderable-db-instance-options --engine postgres --engine-version=17.9 --db-instance-class db.t4g.micro --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "OrderableDBInstanceOptions": [
+          {
+            "Engine": "postgres",
+            "EngineVersion": "17.9",
+            "DBInstanceClass": "db.t4g.micro",
+            "AvailabilityZones": [
+              {
+                "Name": "ap-southeast-1a"
+              }
+            ],
+            "MultiAZCapable": true,
+            "StorageType": "gp3",
+            "SupportsIAMDatabaseAuthentication": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.rds.orderable.db-t4g-small@ap-southeast-1",
+      "probe": "c.rds.orderable.db-t4g-small",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "rds:DescribeOrderableDBInstanceOptions",
+      "command": "aws rds describe-orderable-db-instance-options --engine postgres --engine-version=17.9 --db-instance-class db.t4g.small --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "OrderableDBInstanceOptions": [
+          {
+            "Engine": "postgres",
+            "EngineVersion": "17.9",
+            "DBInstanceClass": "db.t4g.small",
+            "AvailabilityZones": [
+              {
+                "Name": "ap-southeast-1a"
+              }
+            ],
+            "MultiAZCapable": true,
+            "StorageType": "gp3",
+            "SupportsIAMDatabaseAuthentication": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.rds.certificates@ap-southeast-1",
+      "probe": "c.rds.certificates",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "rds:DescribeCertificates",
+      "command": "aws rds describe-certificates --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Certificates": [
+          {
+            "CertificateIdentifier": "rds-ca-rsa2048-g1",
+            "CertificateType": "CA",
+            "ValidTill": "2061-05-20T00:00:00+00:00"
+          }
+        ],
+        "DefaultCertificateForNewLaunches": "rds-ca-rsa2048-g1"
+      }
+    },
+    {
+      "id": "c.rds.account-attributes@ap-southeast-1",
+      "probe": "c.rds.account-attributes",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "rds:DescribeAccountAttributes",
+      "command": "aws rds describe-account-attributes --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AccountQuotas": [
+          {
+            "AccountQuotaName": "DBInstances",
+            "Used": 0,
+            "Max": 40
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.ecs.account-settings@ap-southeast-1",
+      "probe": "c.ecs.account-settings",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ecs:ListAccountSettings",
+      "command": "aws ecs list-account-settings --effective-settings --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "settings": [
+          {
+            "name": "containerInsights",
+            "value": "enabled",
+            "type": "user"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.ecr.registry@ap-southeast-1",
+      "probe": "c.ecr.registry",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ecr:DescribeRegistry",
+      "command": "aws ecr describe-registry --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "registryId": "<sandbox-account>",
+        "replicationConfiguration": {
+          "rules": []
+        }
+      }
+    },
+    {
+      "id": "c.ecr.scanning@ap-southeast-1",
+      "probe": "c.ecr.scanning",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "ecr:GetRegistryScanningConfiguration",
+      "command": "aws ecr get-registry-scanning-configuration --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "registryId": "<sandbox-account>",
+        "scanningConfiguration": {
+          "scanType": "BASIC",
+          "rules": []
+        }
+      }
+    },
+    {
+      "id": "c.dynamodb.limits@ap-southeast-1",
+      "probe": "c.dynamodb.limits",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "dynamodb:DescribeLimits",
+      "command": "aws dynamodb describe-limits --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AccountMaxReadCapacityUnits": 80000,
+        "AccountMaxWriteCapacityUnits": 80000,
+        "TableMaxReadCapacityUnits": 40000,
+        "TableMaxWriteCapacityUnits": 40000
+      }
+    },
+    {
+      "id": "c.cfn.account-limits@ap-southeast-1",
+      "probe": "c.cfn.account-limits",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "cloudformation:DescribeAccountLimits",
+      "command": "aws cloudformation describe-account-limits --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AccountLimits": [
+          {
+            "Name": "StackLimit",
+            "Value": 2000
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.kms.aliases@ap-southeast-1",
+      "probe": "c.kms.aliases",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "kms:ListAliases",
+      "command": "aws kms list-aliases --max-items 200 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Aliases": [
+          {
+            "AliasName": "alias/aws/s3",
+            "AliasArn": "arn:aws:kms:ap-southeast-1:<sandbox-account>:alias/aws/s3",
+            "TargetKeyId": "<uuid-7>"
+          },
+          {
+            "AliasName": "alias/<kms-alias-1>",
+            "AliasArn": "arn:aws:kms:ap-southeast-1:<sandbox-account>:alias/<kms-alias-1>",
+            "TargetKeyId": "<uuid-8>"
+          },
+          {
+            "AliasName": "alias/starter-data",
+            "AliasArn": "arn:aws:kms:ap-southeast-1:<sandbox-account>:alias/starter-data",
+            "TargetKeyId": "<uuid-9>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.kms.key@ap-southeast-1",
+      "probe": "c.kms.key",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "kms:DescribeKey",
+      "command": "aws kms describe-key --key-id=<kmsKeyRef> --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "skipped",
+      "truncated": false,
+      "attempts": 0,
+      "skipReason": "not requested (no --kms-key)"
+    },
+    {
+      "id": "c.logs.subscription-filter-policies@ap-southeast-1",
+      "probe": "c.logs.subscription-filter-policies",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "logs:DescribeAccountPolicies",
+      "command": "aws logs describe-account-policies --policy-type SUBSCRIPTION_FILTER_POLICY --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "accountPolicies": [
+          {
+            "policyName": "<log-policy-1>",
+            "policyType": "DATA_PROTECTION_POLICY",
+            "scope": "ALL",
+            "accountId": "<sandbox-account>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.logs.data-protection-policies@ap-southeast-1",
+      "probe": "c.logs.data-protection-policies",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "logs:DescribeAccountPolicies",
+      "command": "aws logs describe-account-policies --policy-type DATA_PROTECTION_POLICY --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "accountPolicies": [
+          {
+            "policyName": "<log-policy-1>",
+            "policyType": "DATA_PROTECTION_POLICY",
+            "scope": "ALL",
+            "accountId": "<sandbox-account>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c.logs.resource-policies@ap-southeast-1",
+      "probe": "c.logs.resource-policies",
+      "area": "quotas-services",
+      "phase": "discovery",
+      "region": "ap-southeast-1",
+      "iamAction": "logs:DescribeResourcePolicies",
+      "command": "aws logs describe-resource-policies --max-items 50 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "resourcePolicyCount": 2
+      }
+    },
+    {
+      "id": "d.budgets.budgets@us-east-1",
+      "probe": "d.budgets.budgets",
+      "area": "finops",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "budgets:ViewBudget",
+      "command": "aws budgets describe-budgets --account-id=<account> --max-items 100 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Budgets": [
+          {
+            "BudgetName": "<budget-1>",
+            "BudgetType": "COST",
+            "TimeUnit": "MONTHLY",
+            "BudgetLimit": {
+              "Amount": "100.0",
+              "Unit": "USD"
+            },
+            "CostFilters": ["LinkedAccount"]
+          },
+          {
+            "BudgetName": "<budget-2>",
+            "BudgetType": "COST",
+            "TimeUnit": "MONTHLY"
+          }
+        ]
+      }
+    },
+    {
+      "id": "d.budgets.notifications#1@us-east-1",
+      "probe": "d.budgets.notifications",
+      "area": "finops",
+      "phase": "discovery",
+      "region": "us-east-1",
+      "iamAction": "budgets:ViewBudget",
+      "command": "aws budgets describe-notifications-for-budget --account-id=<account> --budget-name=<budget-1> --max-items 10 --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Notifications": [
+          {
+            "NotificationType": "ACTUAL",
+            "ComparisonOperator": "GREATER_THAN",
+            "Threshold": 80,
+            "ThresholdType": "PERCENTAGE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "identity.caller-recheck@ap-southeast-1",
+      "probe": "identity.caller-recheck",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "sts:GetCallerIdentity",
+      "command": "aws sts get-caller-identity --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Account": "<sandbox-account>"
+      }
+    }
+  ]
+}

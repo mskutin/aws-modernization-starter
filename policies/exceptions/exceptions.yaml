@@ -1,0 +1,44 @@
+# Governed policy exceptions — schema: policies/src/exceptions/exceptions.ts (zod)
+#
+# The ONLY sanctioned way to waive a BASE-* (or AwsSolutions-*) finding.
+# Each entry is reviewed in a merge request like any other code change.
+#   id            EXC-NNNN, unique, never reused
+#   status        `reference` = the starter's own code (see below); omitted for your own entries
+#   ruleId        BASE-XXX-NNN | AwsSolutions-XXX (optionally with a cdk-nag finding suffix "[...]")
+#   resource      glob on the CDK construct path (aws:cdk:path), e.g. "Prod/Edge/Distribution/Resource",
+#                 or an exact CloudFormation logical ID ("*" = one path segment, "**" = any depth)
+#   environments  subset of [dev, staging, prod, sandbox]
+#   justification why the risk is accepted and how it is mitigated (>= 20 chars)
+#   owner         accountable person/team; approver is mandatory for critical rules
+#   ticket        change/risk ticket reference
+#   createdAt     YYYY-MM-DD; expiresAt YYYY-MM-DD (inclusive, at most 180 days after createdAt)
+#
+# Two kinds of entry:
+# - `status: reference` (all entries shipped here): a deviation of the starter's OWN reference code.
+#   It is part of the code: no dates, no approver (the schema rejects them), never expires, needs no
+#   approval digest, never scoped to the sandbox, justification >= 40 chars. It applies wherever the
+#   code needs it; changing it is a code change reviewed in an MR (policies/ is a gate path).
+# - no `status`: YOUR project's deviations — createdAt/expiresAt mandatory, approver for critical
+#   rules, approvals recorded outside the MR when CI enforces them. Expired or malformed entries
+#   FAIL `pnpm --filter @starter/policies check-exceptions`, the Guard CI job and `cdk synth`
+#   (BASE-EXC-001). See docs/policy-as-code.md, "Adding a project exception".
+#
+# The live-validation sandbox's exceptions are NOT here: see examples/sandbox/exceptions.yaml.
+#
+# PROPOSED BASELINE — not an approved control set of any organization or regulator.
+schemaVersion: 1
+exceptions:
+  # The one-off database bootstrap task (break-glass) is the only task allowed to use the RDS
+  # master secret; it reads it at runtime (ADR 0221). infra/test/baseline-policies.test.ts also allows
+  # master-secret references only from the database construct and from this exempted task.
+  - id: EXC-0005
+    status: reference
+    ruleId: BASE-ECS-009
+    resource: '*/Migrations/DatabaseBootstrap/TaskDefinition/Resource'
+    environments: [dev, staging, prod]
+    justification: >-
+      One-off break-glass bootstrap; reads the RDS master secret at runtime via
+      DB_AUTH=secrets-manager + DB_SECRET_ARN; task role GetSecretValue on that secret only; no
+      service, not scheduled. Runtime tasks and Lambdas use DB_AUTH=iam with least-privilege roles.
+    owner: data-team
+    ticket: baseline-review

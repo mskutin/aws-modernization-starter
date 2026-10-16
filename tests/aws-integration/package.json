@@ -1,0 +1,36 @@
+{
+  "name": "@starter/tests-aws-integration",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Integration tests of the ephemeral workflow integration stack: real AWS (opt-in) and the MiniStack emulator (socket-less CI service or local container), their deploy/run/cleanup lifecycle scripts, resource reconciliation and the expired-stack sweeper.",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit --outputFile.junit=../../reports/junit/aws-integration-unit.xml",
+    "test:unit": "vitest run --project unit --outputFile.junit=../../reports/junit/aws-integration-unit.xml",
+    "test:aws": "vitest run --project aws --outputFile.junit=../../reports/junit/aws-integration.xml",
+    "test:emulator": "bash emulator/ci.sh",
+    "test:emulator:local": "bash emulator/all.sh",
+    "sweeper": "node dist/sweeper.js",
+    "cleanup:verify": "node dist/cleanup-verify.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "3.1149.0",
+    "@aws-sdk/client-cloudwatch-logs": "3.1149.0",
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/client-iam": "3.1149.0",
+    "@aws-sdk/client-kms": "3.1149.0",
+    "@aws-sdk/client-lambda": "3.1149.0",
+    "@aws-sdk/client-resource-groups-tagging-api": "3.1149.0",
+    "@aws-sdk/client-sfn": "3.1149.0",
+    "@aws-sdk/client-sts": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/documents": "workspace:*",
+    "@starter/infra": "workspace:*",
+    "@starter/job-state": "workspace:*",
+    "@starter/testing": "workspace:*",
+    "@starter/workflow-processing": "workspace:*"
+  }
+}

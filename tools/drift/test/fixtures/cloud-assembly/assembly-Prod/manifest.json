@@ -1,0 +1,23 @@
+{
+  "version": "54.0.0",
+  "artifacts": {
+    "ProdData90A795AA": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://111122223333/ap-southeast-1",
+      "properties": {
+        "templateFile": "ProdData90A795AA.template.json",
+        "stackName": "starter-prd-data"
+      },
+      "displayName": "Prod/Data"
+    },
+    "ProdApi2466CF1F": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://111122223333/ap-southeast-1",
+      "properties": {
+        "templateFile": "ProdApi2466CF1F.template.json",
+        "stackName": "starter-prd-api"
+      },
+      "displayName": "Prod/Api"
+    }
+  }
+}

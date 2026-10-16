@@ -1,0 +1,424 @@
+# yaml-language-server: $schema=./tools/impact/components.schema.json
+#
+# Component manifest — single source of truth for CI impact analysis, the
+# generated GitLab jobs (.gitlab/ci/generated/components.yml), the mandatory
+# gate, and deploy/rollback documentation.
+#
+# Adding a service or Lambda: create the workspace package, add ONE entry
+# below, run `pnpm --filter @starter/tool-impact run generate`, commit both files.
+# See docs/ci-cd.md "Adding a component".
+#
+# Path patterns use GitLab rules:changes semantics (Ruby fnmatch):
+#   "dir/**/*" = everything below dir;  "dir/**" = only direct children.
+schemaVersion: 1
+
+# Changing any of these runs EVERY job (fail-safe: shared toolchain/config/CI).
+global:
+  - package.json
+  - pnpm-lock.yaml
+  - pnpm-workspace.yaml
+  - .npmrc
+  - .node-version
+  - tsconfig.base.json
+  - eslint.config.js
+  - components.yaml
+  - .gitlab-ci.yml
+  - .gitlab/**/*
+  - tools/impact/**/*
+  - tools/ci/**/*
+
+# Known paths that affect no component build/test. Only repo-wide jobs run
+# (lint, format, secrets, SAST, SCA, licenses, pinning).
+nonComponent:
+  - '*.md'
+  - LICENSE
+  - docs/**/*
+  - .editorconfig
+  - .gitignore
+  - .prettierrc.json
+  - .prettierignore
+  - .gitleaks.toml
+  - .pr_agent.toml
+
+components:
+  # ── Deployables ────────────────────────────────────────────────────────────
+  - id: web
+    kind: spa
+    description: React SPA served by CloudFront from a private S3 origin (OAC).
+    path: apps/web
+    package: '@starter/web'
+    owner: app-team
+    build:
+      artifact: { type: static-site, location: apps/web/dist }
+    deploy:
+      stack: '{Stage}/Frontend'
+      strategy: s3-sync-then-cloudfront-invalidation (immutable hashed assets, index.html no-cache)
+      healthChecks:
+        - { type: cloudfront, target: 'https://<distribution>/index.html', expect: '200' }
+      rollback:
+        automated: false
+        mechanism: Redeploy the previous pipeline's static-site artifact (assets are content-hashed; old versions stay valid).
+
+  - id: api
+    kind: service
+    description: Fastify REST API on ECS Fargate (arm64) behind an internal ALB.
+    path: apps/api
+    package: '@starter/api'
+    owner: app-team
+    extraPaths:
+      - .hadolint.yaml
+    build:
+      artifact:
+        type: container-image
+        location: apps/api/dist
+        dockerfile: apps/api/Dockerfile
+        context: .
+        ignoreFile: apps/api/.dockerignore
+        image: starter/api
+    test:
+      integration: pnpm --filter @starter/api run test:integration
+    deploy:
+      stack: '{Stage}/Api'
+      strategy: ecs-rolling (minHealthy 100%, maxPercent 200%, deployment circuit breaker with rollback)
+      healthChecks:
+        - { type: container, target: 'node dist/healthcheck.js', expect: 'exit 0' }
+        - { type: http, target: /health/live, expect: '200 (ALB target group + container)' }
+        - {
+            type: http,
+            target: /health/ready,
+            expect: '200 post-deploy smoke (503 while draining or deps down)',
+          }
+      rollback:
+        automated: true
+        mechanism: ECS deployment circuit breaker rolls back to the previous task definition; manual rollback = redeploy the previous image digest via CDK context apiImageDigest.
+    migrations:
+      path: apps/api/migrations
+      command: node dist/migrate.js
+      runs: One-off ECS task (same image) before the service update; locally via `pnpm --filter @starter/api run migrate`.
+      policy: expand-contract
+      rollback: Forward-fix only — migrations are additive (expand), destructive steps ship in a later release (contract).
+
+  - id: fn-validator
+    kind: lambda
+    description: Step Functions task — validates a job payload.
+    path: functions/validator
+    package: '@starter/fn-validator'
+    owner: app-team
+    build:
+      artifact: { type: lambda-bundle, location: functions/validator/dist }
+    deploy:
+      stack: '{Stage}/Workflow'
+      strategy: lambda-version + alias (live) update
+      healthChecks:
+        - {
+            type: lambda-invoke,
+            target: 'alias live with a synthetic validation payload',
+            expect: 'no FunctionError',
+          }
+      rollback:
+        automated: false
+        mechanism: Shift the `live` alias back to the previous published version (CDK redeploy of the previous commit does the same).
+
+  - id: fn-processor
+    kind: lambda
+    description: Step Functions task — processes a validated job and records state.
+    path: functions/processor
+    package: '@starter/fn-processor'
+    owner: app-team
+    build:
+      artifact: { type: lambda-bundle, location: functions/processor/dist }
+    deploy:
+      stack: '{Stage}/Workflow'
+      strategy: lambda-version + alias (live) update
+      healthChecks:
+        - {
+            type: lambda-invoke,
+            target: 'alias live with a synthetic payload',
+            expect: 'no FunctionError',
+          }
+      rollback:
+        automated: false
+        mechanism: Shift the `live` alias back to the previous published version.
+
+  # The ONE scheduled stale-job reconciler per environment (ADR 0231).
+  - id: fn-reconciler
+    kind: lambda
+    description: Scheduled stale-job reconciler — closes jobs left non-terminal after workflow failures.
+    path: functions/reconciler
+    package: '@starter/fn-reconciler'
+    owner: app-team
+    build:
+      artifact: { type: lambda-bundle, location: functions/reconciler/dist }
+    test:
+      integration: pnpm --filter @starter/fn-reconciler run test:integration
+    deploy:
+      stack: '{Stage}/Workflow'
+      strategy: lambda-version + alias (live) update; EventBridge schedule, reserved concurrency 1
+      healthChecks:
+        - {
+            type: lambda-invoke,
+            target: 'alias live with RECONCILER_DRY_RUN=true in non-prod',
+            expect: 'no FunctionError; DependencyErrors = 0',
+          }
+      rollback:
+        automated: false
+        mechanism: Shift the `live` alias back to the previous version, or disable the schedule rule (jobs stay as they are; nothing is lost).
+
+  - id: workflow-processing
+    kind: workflow
+    description: Processing workflow spec (runtime-safe) + Step Functions definition (./cdk export).
+    path: workflows/processing
+    package: '@starter/workflow-processing'
+    owner: platform-team
+    build:
+      artifact: { type: library-dist, location: workflows/processing/dist }
+    test:
+      # The package exposes `test` (spec tests), no `test:unit`.
+      unit: pnpm --filter {package} run test
+    deploy:
+      stack: '{Stage}/Workflow'
+      strategy: state-machine definition update (new executions use the new version)
+      healthChecks:
+        - { type: state-machine, target: 'synthetic execution in non-prod', expect: SUCCEEDED }
+      rollback:
+        automated: false
+        mechanism: Redeploy the previous definition; in-flight executions finish on the version they started with.
+
+  # ── Data stores (no package; documented for deploy/rollback policy) ───────
+  - id: rds-postgres
+    kind: datastore
+    description: RDS PostgreSQL 17 (Multi-AZ in prod), credentials in Secrets Manager.
+    owner: platform-team
+    dependsOn: [infra]
+    deploy:
+      stack: '{Stage}/Data'
+      strategy: CloudFormation in-place modification; deletion protection + snapshot on replace
+      healthChecks:
+        - { type: sql, target: 'SELECT 1 via /health/ready', expect: 'ready' }
+      rollback:
+        automated: false
+        mechanism: No automated rollback. Forward-fix only; point-in-time restore for data recovery. Destructive changes are blocked by the FinOps/destructive-change report.
+
+  - id: dynamodb-jobs
+    kind: datastore
+    description: DynamoDB job-state table (PITR enabled).
+    owner: platform-team
+    dependsOn: [infra]
+    deploy:
+      stack: '{Stage}/Data'
+      strategy: CloudFormation update (retain policy)
+      healthChecks:
+        - { type: http, target: /health/ready, expect: '200' }
+      rollback:
+        automated: false
+        mechanism: Forward-fix only; PITR restore to a new table for data recovery.
+
+  # ── Infrastructure ────────────────────────────────────────────────────────
+  - id: infra
+    kind: infra
+    description: AWS CDK v2 app (dev/staging/prod stages + integration mini-stack).
+    path: infra
+    package: '@starter/infra'
+    owner: platform-team
+    # NodejsFunction bundles the Lambda sources at synth time.
+    dependsOn: [fn-validator, fn-processor, fn-reconciler]
+    build:
+      artifact: { type: cdk-assembly, location: infra/cdk.out }
+    infra:
+      environments: [dev, staging, prod, integration]
+      policyComponents: [policies]
+      finopsComponents: [tool-finops]
+
+  - id: policies
+    kind: policy
+    description: cdk-nag custom pack + CloudFormation Guard rules, fixtures and expiring exceptions.
+    path: policies
+    package: '@starter/policies'
+    owner: governance-team
+    ci:
+      # Guard-backed tests must not silently skip: install the pinned, SHA-256
+      # verified cfn-guard (project-local) and require it.
+      setup: [pnpm -C policies run guard:install]
+      variables:
+        REQUIRE_CFN_GUARD: '1'
+
+  # ── Shared libraries ──────────────────────────────────────────────────────
+  - id: contracts
+    kind: library
+    path: packages/contracts
+    package: '@starter/contracts'
+    owner: app-team
+    build:
+      artifact: { type: library-dist, location: packages/contracts/dist }
+
+  - id: domain
+    kind: library
+    path: packages/domain
+    package: '@starter/domain'
+    owner: app-team
+
+  - id: job-state
+    kind: library
+    path: packages/job-state
+    package: '@starter/job-state'
+    owner: app-team
+    test:
+      integration: pnpm --filter @starter/job-state run test:integration
+
+  # Claim-check document source (load_job_document as starter_processor).
+  - id: documents
+    kind: library
+    path: packages/documents
+    package: '@starter/documents'
+    owner: app-team
+    test:
+      integration: pnpm --filter @starter/documents run test:integration
+
+  - id: observability
+    kind: library
+    path: packages/observability
+    package: '@starter/observability'
+    owner: app-team
+
+  - id: config
+    kind: library
+    path: packages/config
+    package: '@starter/config'
+    owner: app-team
+
+  - id: db
+    kind: library
+    description: PostgreSQL access - pool with verify-full TLS, per-connection credentials (IAM), role bootstrap, migration runner.
+    path: packages/db
+    package: '@starter/db'
+    owner: data-team
+    test:
+      # TLS through a test-controlled TLS proxy, rotation and credential leakage against the
+      # PostgreSQL service. The real-TLS-server variant (test:tls-server) needs a container
+      # runtime and runs locally only.
+      integration: pnpm --filter @starter/db run test:integration
+
+  - id: testing
+    kind: library
+    path: packages/testing
+    package: '@starter/testing'
+    owner: app-team
+
+  # ── Tooling ───────────────────────────────────────────────────────────────
+  - id: tool-impact
+    kind: tool
+    path: tools/impact
+    package: '@starter/tool-impact'
+    owner: ci-team
+
+  - id: tool-ci
+    kind: tool
+    path: tools/ci
+    package: '@starter/tool-ci'
+    owner: ci-team
+
+  - id: tool-finops
+    kind: tool
+    path: tools/finops
+    package: '@starter/tool-finops'
+    owner: governance-team
+
+  - id: tool-drift
+    kind: tool
+    path: tools/drift
+    package: '@starter/tool-drift'
+    owner: governance-team
+
+  # TEST ONLY OpenID Connect provider for local compose and CI. Never deployed.
+  - id: tool-test-idp
+    kind: tool
+    path: tools/test-idp
+    package: '@starter/tool-test-idp'
+    owner: app-team
+
+  # Read-only AWS sandbox discovery CLI. Operator-run only: it refuses to run when CI or
+  # GITLAB_CI is set; CI runs only its offline unit tests (fake AWS CLI, no credentials).
+  - id: tool-aws-preflight
+    kind: tool
+    path: tools/aws-preflight
+    package: '@starter/tool-aws-preflight'
+    owner: ci-team
+
+  # Live sandbox FinOps: offline cost estimate, and the
+  # operator-run read-only experiment inventory and teardown verification (account guard first).
+  # CI runs only its offline tests (fake AWS CLI and fake guard, no credentials); the tool refuses to
+  # call AWS when CI or GITLAB_CI is set.
+  - id: tool-aws-sandbox
+    kind: tool
+    path: tools/aws-sandbox
+    package: '@starter/tool-aws-sandbox'
+    owner: governance-team
+
+  # ── Test suites ───────────────────────────────────────────────────────────
+  - id: tests-integration
+    kind: test-suite
+    description: API + local workflow against PostgreSQL and DynamoDB Local (GitLab services in CI).
+    path: tests/integration
+    package: '@starter/tests-integration'
+    owner: qa-team
+    dependsOn: [api, fn-validator, fn-processor, workflow-processing, tests-smoke, tool-test-idp]
+    extraPaths:
+      - local/compose/**/*
+      - scripts/**/*
+      - lefthook.yml
+    test:
+      # The local-environment scripts (scripts/podman, scripts/git-hooks, local/compose/bin) against
+      # stub tools and a fake Podman API: no containers, no network.
+      unit: pnpm --filter {package} run test:unit
+      # Starts the API (migrations + DynamoDB table + local workflow) against the
+      # CI services, then runs the black-box suite and the smoke check.
+      integration: sh tools/ci/scripts/api-integration.sh
+      integrationRunner: other
+
+  - id: tests-security
+    kind: test-suite
+    description: Black-box security suite (authN/authZ, IDOR, idempotency scoping, rate limits, hygiene, leakage) against API processes it starts itself, directly and behind XFF-appending proxies; artifact leakage scanner.
+    path: tests/security
+    package: '@starter/tests-security'
+    owner: security-team
+    dependsOn: [api, fn-validator, fn-processor, workflow-processing]
+    test:
+      unit: pnpm --filter {package} run test:unit
+      # Starts PostgreSQL/DynamoDB-backed API processes from apps/api/dist (CI services via
+      # TEST_DB_* / TEST_DYNAMODB_ENDPOINT), a TEST-ONLY issuer and a fake Step Functions endpoint.
+      integration: pnpm --filter {package} run test:integration
+    ci:
+      variables:
+        # Every check must run in CI: a gated or unconfigured check fails instead of skipping
+        # (including the workflow-spec 2.0.0 checks).
+        SECTEST_REQUIRE_ALL: '1'
+
+  - id: tests-e2e
+    kind: test-suite
+    description: Playwright browser tests against the built SPA + API.
+    path: tests/e2e
+    package: '@starter/tests-e2e'
+    owner: qa-team
+    dependsOn: [web, api, tool-test-idp]
+    # Runs in the hand-written e2e:playwright job (Playwright image, API + vite preview).
+    test:
+      unit: null
+
+  - id: tests-smoke
+    kind: test-suite
+    description: Post-deploy smoke checks (health + one job round-trip).
+    path: tests/smoke
+    package: '@starter/tests-smoke'
+    owner: qa-team
+
+  - id: tests-aws-integration
+    kind: test-suite
+    description: Real-AWS integration tests for the ephemeral mini-stack (skip truthfully without credentials), and the same mini-stack and workflow against the MiniStack emulator (hand-written integration:ministack:* jobs, .gitlab/ci/emulator.yml).
+    path: tests/aws-integration
+    package: '@starter/tests-aws-integration'
+    owner: qa-team
+    dependsOn: [infra]
+    test:
+      # Its test:unit already writes reports/junit/aws-integration-unit.xml; CI must
+      # not append a second --outputFile.junit.
+      unitRunner: other

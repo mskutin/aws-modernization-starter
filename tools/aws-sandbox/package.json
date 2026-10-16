@@ -1,0 +1,27 @@
+{
+  "name": "@starter/tool-aws-sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Live AWS sandbox FinOps: read-only experiment inventory, read-only teardown verification (verify-clean), offline sandbox cost estimate and estimated-vs-billed reconciliation. Shells out to the AWS CLI v2 with a static read-only allowlist after the account guard; never deletes anything.",
+  "bin": {
+    "starter-aws-sandbox": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "schema:write": "node dist/bin.js schema --write && prettier --write schema"
+  },
+  "dependencies": {
+    "@starter/tool-finops": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "files": [
+    "dist",
+    "pricing",
+    "schema"
+  ]
+}

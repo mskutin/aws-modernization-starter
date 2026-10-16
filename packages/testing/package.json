@@ -1,0 +1,42 @@
+{
+  "name": "@starter/testing",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Test fixtures/builders, PostgreSQL / DynamoDB Local endpoints from env (CI services) or Testcontainers (local), and a TEST-ONLY in-process OIDC issuer (./auth).",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "default": "./dist/auth/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@starter/contracts": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "jose": "6.2.12",
+    "pg": "8.23.1",
+    "testcontainers": "12.2.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "vitest": "5.0.3"
+  },
+  "peerDependencies": {
+    "vitest": "5.0.3"
+  }
+}

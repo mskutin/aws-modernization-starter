@@ -1,0 +1,89 @@
+# Local stand-in for the CloudFront distribution (rendered by the nginx image's envsubst step).
+#   /v1/*        -> API origin (ALB in AWS)        — same-origin for the browser, no CORS needed
+#   /health/*    -> API origin
+#   /config.json -> SPA runtime configuration (CloudFront Function in AWS), from SPA_AUTH_* env
+#   /*           -> SPA static files (private S3 origin in AWS), unknown paths fall back to index.html
+#                   (CloudFront custom error response 403/404 -> /index.html, 200)
+
+# Re-resolve the API container name so API restarts do not leave a stale upstream IP.
+resolver ${NGINX_LOCAL_RESOLVERS} valid=5s ipv6=off;
+
+server {
+    listen 8080;
+    listen [::]:8080;
+    server_name _;
+    server_tokens off;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Comparable to the CloudFront response-headers policy.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # API body limit is enforced by the API itself (413); keep the proxy limit above it so the
+    # API's problem+json response is what clients see.
+    client_max_body_size 2m;
+
+    location = /__nginx/health {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /v1/ {
+        set $api_upstream ${API_UPSTREAM};
+        proxy_pass $api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # Bearer token forwarded unchanged (the API authenticates every /v1 request itself).
+        proxy_set_header Authorization $http_authorization;
+        # Appends this hop's peer: with TRUST_PROXY_HOPS=1 the API keys failed-auth rate limits on
+        # it and ignores client-supplied X-Forwarded-For entries (like CloudFront -> ALB, hops 2).
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 30s;
+        # Authenticated, per-user responses are never cached here (the API also sends no-store).
+        proxy_cache off;
+        # The server-level security headers replace the API's copy, as the CloudFront response
+        # headers policy does with override: true (no duplicated "nosniff, nosniff").
+        proxy_hide_header X-Content-Type-Options;
+    }
+
+    # SPA runtime configuration (issuer, client id, scopes): one SPA build for every environment.
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        return 200 '{"auth":{"issuer":"${SPA_AUTH_ISSUER}","clientId":"${SPA_AUTH_CLIENT_ID}","scope":"${SPA_AUTH_SCOPE}"}}';
+    }
+
+    location /health/ {
+        set $api_upstream ${API_UPSTREAM};
+        proxy_pass $api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_hide_header X-Content-Type-Options;
+    }
+
+    # Fingerprinted Vite assets: long-lived immutable caching (success responses only — without
+    # `always`, a 404 for a not-yet-deployed asset is not cached for a year).
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        try_files $uri =404;
+    }
+
+    # SPA shell: never cache index.html so deployments are picked up immediately.
+    location / {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

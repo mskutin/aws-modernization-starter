@@ -1,0 +1,105 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AwsPreflightReadOnlyDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "acm:ListCertificates",
+        "budgets:ViewBudget",
+        "cloudformation:DescribeAccountLimits",
+        "cloudformation:ListStacks",
+        "cloudformation:ListTypes",
+        "dynamodb:DescribeLimits",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeManagedPrefixLists",
+        "ec2:DescribeNatGateways",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcBlockPublicAccessExclusions",
+        "ec2:DescribeVpcBlockPublicAccessOptions",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:DescribeVpcs",
+        "ecr:DescribeRegistry",
+        "ecr:GetRegistryScanningConfiguration",
+        "ecs:ListAccountSettings",
+        "elasticloadbalancing:DescribeAccountLimits",
+        "iam:GetAccountSummary",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:GetRole",
+        "iam:ListAccountAliases",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListPolicies",
+        "iam:ListRolePolicies",
+        "kms:DescribeKey",
+        "kms:ListAliases",
+        "lambda:GetAccountSettings",
+        "logs:DescribeAccountPolicies",
+        "logs:DescribeResourcePolicies",
+        "organizations:DescribeEffectivePolicy",
+        "organizations:DescribeOrganization",
+        "organizations:ListParents",
+        "organizations:ListPoliciesForTarget",
+        "rds:DescribeAccountAttributes",
+        "rds:DescribeCertificates",
+        "rds:DescribeDBEngineVersions",
+        "rds:DescribeOrderableDBInstanceOptions",
+        "route53:ListHostedZones",
+        "servicequotas:GetAWSDefaultServiceQuota",
+        "servicequotas:GetServiceQuota",
+        "servicequotas:ListRequestedServiceQuotaChangeHistoryByQuota",
+        "servicequotas:ListServiceQuotas",
+        "sts:GetCallerIdentity",
+        "wafv2:ListWebACLs"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": ["ap-southeast-1", "us-east-1"]
+        }
+      }
+    },
+    {
+      "Sid": "AwsPreflightCloudformationDescribeStacks",
+      "Effect": "Allow",
+      "Action": ["cloudformation:DescribeStacks"],
+      "Resource": [
+        "arn:aws:cloudformation:ap-southeast-1:*:stack/CDKToolkit/*",
+        "arn:aws:cloudformation:us-east-1:*:stack/CDKToolkit/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": ["ap-southeast-1", "us-east-1"]
+        }
+      }
+    },
+    {
+      "Sid": "AwsPreflightIamGetRolePolicy",
+      "Effect": "Allow",
+      "Action": ["iam:GetRolePolicy"],
+      "Resource": ["arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*"],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": ["ap-southeast-1", "us-east-1"]
+        }
+      }
+    },
+    {
+      "Sid": "AwsPreflightSsmGetParameter",
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter"],
+      "Resource": [
+        "arn:aws:ssm:ap-southeast-1:*:parameter/cdk-bootstrap/*",
+        "arn:aws:ssm:us-east-1:*:parameter/cdk-bootstrap/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": ["ap-southeast-1", "us-east-1"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+schemaVersion: 1
+exceptions:
+  - id: EXC-0003
+    ruleId: BASE-RDS-003
+    resource: 'Prod/Data/Database/**'
+    environments: [prod]
+    justification: Temporary during the blue/green database migration window.
+    owner: dba-team
+    ticket: TKT-200
+    createdAt: '2026-08-01'
+    expiresAt: '2026-09-30'

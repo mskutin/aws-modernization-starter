@@ -1,0 +1,36 @@
+{
+  "name": "@starter/tool-finops",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Offline FinOps gate: CloudFormation template diff, destructive-change detection and cost-impact estimate from a dated, manually maintained price snapshot.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "starter-finops": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "finops:diff": "tsx src/bin.ts diff",
+    "finops:check": "tsx src/bin.ts check"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "zod": "4.6.5"
+  },
+  "files": [
+    "dist",
+    "pricing",
+    "assumptions",
+    "budgets",
+    "thresholds.yaml"
+  ]
+}

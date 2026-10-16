@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["specs", "support", "*.ts"]
+}

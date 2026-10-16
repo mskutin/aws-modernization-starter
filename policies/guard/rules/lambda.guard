@@ -1,0 +1,96 @@
+#
+# Proposed policy baseline - AWS Lambda
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/lambda.ts (runtime allowlist and timeout bound must stay in sync)
+#
+
+let starter_lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+let starter_lambda_zip_functions = Resources.*[
+  Type == 'AWS::Lambda::Function'
+  Properties.PackageType !exists or Properties.PackageType != 'Image'
+]
+
+rule BASE_LMB_001 when %starter_lambda_zip_functions !empty {
+  %starter_lambda_zip_functions.Properties.Runtime IN ['nodejs24.x', 'nodejs22.x', 'python3.13', 'python3.14', 'java21', 'provided.al2023']
+  <<BASE-LMB-001: Lambda runtimes are on the allowlist>>
+}
+
+rule BASE_LMB_002 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties.Architectures[*] == 'arm64'
+  <<BASE-LMB-002: Lambda functions prefer arm64 (advisory)>>
+}
+
+rule BASE_LMB_003 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties.Timeout <= 300
+  <<BASE-LMB-003: Lambda timeouts are explicit and bounded (<= 300 s)>>
+}
+
+rule BASE_LMB_004 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties.ReservedConcurrentExecutions >= 1
+  <<BASE-LMB-004: Lambda reserved concurrency is set (advisory)>>
+}
+
+rule BASE_LMB_005 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties.LoggingConfig.LogGroup exists
+  <<BASE-LMB-005: Lambda logs go to a managed log group (LoggingConfig.LogGroup)>>
+}
+
+rule BASE_LMB_006 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties.TracingConfig.Mode == 'Active'
+  <<BASE-LMB-006: Lambda active tracing is enabled>>
+}
+
+# BASE-LMB-007 / BASE-LMB-008 (ADR 0511): deployed functions carry no
+# local/CI relaxations and authenticate to PostgreSQL with IAM. Keep in sync with
+# policies/src/rules/runtime.ts (parity tests).
+rule BASE_LMB_007 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties {
+    when Environment.Variables exists {
+      Environment.Variables {
+        when APP_RUNTIME exists {
+          APP_RUNTIME == 'aws'
+          <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (APP_RUNTIME must be aws or unset)>>
+        }
+        AUTH_ALLOW_INSECURE_ISSUER !exists
+        <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (AUTH_ALLOW_INSECURE_ISSUER is set)>>
+        when AUTH_ISSUER is_string {
+          AUTH_ISSUER != /^[Hh][Tt][Tt][Pp]:/
+          <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (AUTH_ISSUER uses http:)>>
+        }
+        when AUTH_JWKS_URI is_string {
+          AUTH_JWKS_URI != /^[Hh][Tt][Tt][Pp]:/
+          <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (AUTH_JWKS_URI uses http:)>>
+        }
+        when DB_SSL exists {
+          DB_SSL == 'verify-full'
+          <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (DB_SSL must be verify-full)>>
+        }
+        when DB_HOST exists {
+          DB_SSL exists
+          <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (DB_HOST without DB_SSL=verify-full)>>
+        }
+        DB_PASSWORD !exists
+        <<BASE-LMB-007: Lambda functions carry no local/CI relaxations (DB_PASSWORD is set)>>
+      }
+    }
+  }
+}
+
+rule BASE_LMB_008 when %starter_lambda_functions !empty {
+  %starter_lambda_functions.Properties {
+    when Environment.Variables exists {
+      Environment.Variables {
+        when DB_AUTH exists {
+          DB_AUTH == 'iam'
+          <<BASE-LMB-008: Lambda functions authenticate to PostgreSQL with IAM (DB_AUTH must be iam)>>
+        }
+        when DB_HOST exists {
+          DB_AUTH exists
+          <<BASE-LMB-008: Lambda functions authenticate to PostgreSQL with IAM (DB_HOST without DB_AUTH=iam)>>
+        }
+        this[ keys == /^DB_.*SECRET/ ] empty
+        <<BASE-LMB-008: Lambda functions authenticate to PostgreSQL with IAM (database secret reference)>>
+      }
+    }
+  }
+}

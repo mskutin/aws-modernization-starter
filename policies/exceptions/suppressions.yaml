@@ -1,0 +1,393 @@
+# Governed suppression register — schema: policies/src/exceptions/suppressions.ts (zod)
+#
+# Every in-code acknowledgement (infra/lib/policy-hook.ts: acknowledgeRule, acknowledgeAnnotation,
+# acknowledgeCfnValidate) must match exactly ONE active entry below, or the construct throws while
+# it is built (synth and tests fail). The acknowledgement is then attached ONLY to the resources the
+# entry names — never to a whole construct subtree. BASE-* deviations are NOT registered here: they
+# are governed exceptions in exceptions.yaml (EXC-NNNN).
+#
+#   id                   SUP-NNNN, unique, never reused
+#   status               `reference` = the starter's own code (see below); omitted for your own entries
+#   ruleId               cdk-nag rule id with the finding where the rule reports one
+#                        (AwsSolutions-IAM5[Resource::*]), Annotation::@aws-cdk/<module>:<id>, or
+#                        CloudFormation-Validate::<code>
+#   construct            class whose code calls acknowledge*() (e.g. ApiService)
+#   resources            construct paths RELATIVE to that construct of exactly the resources that
+#                        carry the finding (CloudFormation resources; for annotations the construct
+#                        that raises the warning). "*" matches within one segment; "**" is rejected.
+#   environments         subset of [dev, staging, prod, sandbox]; enforced when the stage is
+#                        Dev/Staging/Prod/Sandbox
+#   allowedActions       AwsSolutions-IAM5[Resource::*] only (mandatory there): the exact actions that
+#                        may appear on Resource "*"; each must be in the BASE-IAM-002 allowlist
+#   justification        why the finding is acceptable and what mitigates it (>= 40 chars)
+#   compensatingControls optional: tests/rules that bound the risk
+#   owner                accountable role (see docs/policy-as-code.md); approver optional
+#   ticket               optional reference
+#   createdAt            YYYY-MM-DD the entry was added; reviewedAt: last review
+#   reviewBy             at most 180 days after reviewedAt. After this date the suppression NO LONGER
+#                        APPLIES (synth, tests and CI fail) until the owner re-reviews it in an MR.
+#
+# Process: add or change an entry in the same MR as the acknowledge*() call; the policy owner
+# reviews it. `pnpm -C policies run check-exceptions --templates infra/cdk.out` audits every
+# suppression in the synthesized templates against this file (CI: policy:infra).
+#
+# Two kinds of entry:
+# - `status: reference` (all entries shipped here): an acknowledgement the starter's OWN reference
+#   code makes (each finding confirmed against raw cdk-nag output, each scope narrowed to the exact
+#   resources). Part of the code: no dates, no approver (the schema rejects them), never expires,
+#   needs no approval digest, never scoped to the sandbox. Changing it is a code change reviewed in
+#   an MR (policies/ is a gate path).
+# - no `status`: YOUR project's entries — createdAt/reviewedAt/reviewBy mandatory, review at most
+#   180 days ahead; after reviewBy the entry no longer applies.
+#
+# The live-validation sandbox's suppressions are NOT here: see examples/sandbox/suppressions.yaml.
+#
+# PROPOSED BASELINE — not an approved control set of any organization or regulator.
+schemaVersion: 1
+suppressions:
+  # --- API service (infra/constructs/api-service.ts) ---------------------------------------------
+  - id: SUP-0001
+    status: reference
+    ruleId: AwsSolutions-ECS2
+    construct: ApiService
+    resources: [TaskDefinition/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      The API container receives only non-secret configuration (environment name, log level, table
+      name, state machine ARN, CORS origins) as environment variables; database credentials come
+      from Secrets Manager through ECS secrets, never as plain environment values.
+    compensatingControls:
+      - BASE-ECS-006 (no credentials in plain-text container environment, cdk-nag + Guard)
+    owner: security-team
+    ticket: baseline-review
+  - id: SUP-0002
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: ApiService
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      ecr:GetAuthorizationToken has no resource-level permissions and is the only action on
+      Resource "*" in the task execution role; image pull, log, secret and KMS actions are scoped
+      to the API repository, log group, secret and key.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+    owner: security-team
+    ticket: baseline-review
+
+  # --- Database migration task (infra/constructs/database-migration-task.ts) ---------------------
+  - id: SUP-0003
+    status: reference
+    ruleId: AwsSolutions-ECS2
+    construct: DatabaseMigrationTask
+    resources: [TaskDefinition/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      The one-off migration task receives only non-secret configuration as environment variables;
+      it authenticates as starter_migrator with RDS IAM tokens signed in-process, so the task
+      definition holds no database credential at all.
+    compensatingControls:
+      - BASE-ECS-006 (no credentials in plain-text container environment, cdk-nag + Guard)
+      - BASE-ECS-008/009 (no DB_PASSWORD, verify-full TLS, DB_AUTH=iam)
+    owner: data-team
+    ticket: baseline-review
+  - id: SUP-0004
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: DatabaseMigrationTask
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      ecr:GetAuthorizationToken has no resource-level permissions and is the only action on
+      Resource "*" in the migration task execution role; image pull is scoped to the repository.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+    owner: data-team
+    ticket: baseline-review
+
+  # --- Database bootstrap task (infra/constructs/database-migration-task.ts) ---------------------
+  - id: SUP-0200
+    status: reference
+    ruleId: AwsSolutions-ECS2
+    construct: DatabaseBootstrapTask
+    resources: [TaskDefinition/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      The one-off bootstrap task receives only non-secret configuration as environment variables:
+      the master secret's ARN, never its value, which the task role reads from Secrets Manager when
+      the connection opens.
+    compensatingControls:
+      - BASE-ECS-008 (no DB_PASSWORD, verify-full TLS)
+      - EXC-0005 (BASE-ECS-009 exception limited to this task definition)
+    owner: data-team
+    ticket: baseline-review
+  - id: SUP-0201
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: DatabaseBootstrapTask
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      ecr:GetAuthorizationToken has no resource-level permissions and is the only action on
+      Resource "*" in the bootstrap task execution role; image pull is scoped to the repository.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+    owner: data-team
+    ticket: baseline-review
+
+  # --- Database retention task (infra/constructs/database-migration-task.ts) ---------------------
+  - id: SUP-0202
+    status: reference
+    ruleId: AwsSolutions-ECS2
+    construct: DatabaseRetentionTask
+    resources: [TaskDefinition/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      The one-off retention task receives only non-secret configuration as environment variables
+      (the retention policy and DB_* settings); it authenticates as starter_retention with RDS IAM
+      tokens signed in-process, so the task definition holds no database credential.
+    compensatingControls:
+      - BASE-ECS-008/009 (no DB_PASSWORD, verify-full TLS, DB_AUTH=iam)
+    owner: data-team
+    ticket: baseline-review
+  - id: SUP-0203
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: DatabaseRetentionTask
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      ecr:GetAuthorizationToken has no resource-level permissions and is the only action on
+      Resource "*" in the retention task execution role; image pull is scoped to the repository.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+    owner: data-team
+    ticket: baseline-review
+
+  # --- Processing workflow (infra/constructs/processing-workflow.ts) -----------------------------
+  - id: SUP-0005
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: ProcessingWorkflow
+    resources: [StateMachine/Resource/Role/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    allowedActions:
+      - logs:CreateLogDelivery
+      - logs:DeleteLogDelivery
+      - logs:DescribeLogGroups
+      - logs:DescribeResourcePolicies
+      - logs:GetLogDelivery
+      - logs:ListLogDeliveries
+      - logs:PutResourcePolicy
+      - logs:UpdateLogDelivery
+      - xray:GetSamplingRules
+      - xray:GetSamplingTargets
+      - xray:PutTelemetryRecords
+      - xray:PutTraceSegments
+    justification: >-
+      Step Functions execution logging (CloudWatch Logs vended delivery) and X-Ray tracing use
+      account-level APIs without resource-level permissions; task invocations, DynamoDB and KMS
+      actions of the state machine role are scoped to their resources.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+      - BASE-LOG-003 (state machines emit execution logs)
+    owner: app-team
+    ticket: baseline-review
+  - id: SUP-0006
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: ProcessingWorkflow
+    resources:
+      - ValidatorRole/DefaultPolicy/Resource
+      - ProcessorRole/DefaultPolicy/Resource
+    environments: [dev, staging, prod]
+    allowedActions:
+      - ec2:AssignPrivateIpAddresses
+      - ec2:CreateNetworkInterface
+      - ec2:DeleteNetworkInterface
+      - ec2:DescribeNetworkInterfaces
+      - ec2:DescribeSubnets
+      - ec2:UnassignPrivateIpAddresses
+      - xray:PutTelemetryRecords
+      - xray:PutTraceSegments
+    justification: >-
+      The validator and processor Lambdas need X-Ray trace upload and, when placed in the VPC, the
+      ENI management actions the Lambda service uses; none of these supports resource-level
+      permissions. Data access (DynamoDB, KMS, logs) is scoped to the job table, keys and log groups.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+    owner: app-team
+    ticket: baseline-review
+
+  # --- Relational database (infra/constructs/relational-database.ts) -----------------------------
+  - id: SUP-0007
+    status: reference
+    ruleId: AwsSolutions-IAM4[Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole]
+    construct: RelationalDatabase
+    resources: [Instance/MonitoringRole/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      RDS enhanced monitoring requires the AWS-maintained AmazonRDSEnhancedMonitoringRole service
+      policy, which AWS scopes to the RDSOSMetrics log group; the role trusts only
+      monitoring.rds.amazonaws.com and carries the stage's permissions boundary where one is set.
+    owner: data-team
+    ticket: baseline-review
+  - id: SUP-0008
+    status: reference
+    ruleId: AwsSolutions-RDS11
+    construct: RelationalDatabase
+    resources: [Instance/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      The default PostgreSQL port is kept deliberately: the instance is in isolated subnets, not
+      publicly accessible, and its security group admits 5432 only from named client security
+      groups; a non-standard port adds no meaningful protection.
+    compensatingControls:
+      - BASE-RDS-002 (RDS instances are not publicly accessible)
+      - BASE-RDS-005 (PostgreSQL connections require TLS)
+    owner: data-team
+    ticket: baseline-review
+  - id: SUP-0009
+    status: reference
+    ruleId: AwsSolutions-RDS3
+    construct: RelationalDatabase
+    resources: [Instance/Resource]
+    environments: [dev, staging]
+    justification: >-
+      Single-AZ RDS is a cost decision for dev and staging only; the configuration schema rejects a
+      prod configuration without Multi-AZ, and this entry does not list prod.
+    owner: data-team
+    ticket: baseline-review
+  - id: SUP-0010
+    status: reference
+    ruleId: AwsSolutions-RDS10
+    construct: RelationalDatabase
+    resources: [Instance/Resource]
+    environments: [dev]
+    justification: >-
+      Deletion protection is disabled only in dev, where a final snapshot is still taken; the
+      configuration schema requires it in staging and prod, and this entry lists dev only.
+    compensatingControls:
+      - BASE-RDS-003 (RDS deletion protection in staging/prod)
+    owner: data-team
+    ticket: baseline-review
+
+  # --- SPA hosting (infra/constructs/spa-hosting.ts) ---------------------------------------------
+  - id: SUP-0012
+    status: reference
+    ruleId: AwsSolutions-CFR1
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      No geo restriction by default: the service is public-facing; an organization that must restrict
+      access by country sets frontend.geoAllowlist, which removes this finding.
+    owner: security-team
+    ticket: baseline-review
+  - id: SUP-0013
+    status: reference
+    ruleId: AwsSolutions-CFR2
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [dev]
+    justification: >-
+      A dev sandbox without a platform-managed WAF web ACL has no WAF in front of CloudFront; the
+      configuration schema requires the CLOUDFRONT-scope web ACL in staging and prod.
+    owner: security-team
+    ticket: baseline-review
+  - id: SUP-0014
+    status: reference
+    ruleId: AwsSolutions-CFR4
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [dev]
+    justification: >-
+      A dev sandbox without a custom domain uses the default *.cloudfront.net certificate, for which
+      CloudFront cannot enforce a minimum TLS policy; imported foundations require a custom domain
+      with TLSv1.2_2021.
+    compensatingControls:
+      - BASE-CF-002 (viewer TLS uses a modern security policy outside dev)
+    owner: security-team
+    ticket: baseline-review
+  - id: SUP-0015
+    status: reference
+    ruleId: Annotation::@aws-cdk/aws-s3:accessLogsPolicyNotAdded
+    construct: SpaHosting
+    resources: [Bucket]
+    environments: [dev, staging, prod]
+    justification: >-
+      The access-log bucket belongs to the landing-zone foundation (or the sandbox foundation stack), whose
+      bucket policy already authorises logging.s3.amazonaws.com for this account, so CDK cannot and
+      need not add the logging grant to an imported bucket.
+    owner: security-team
+    ticket: baseline-review
+
+  # --- Sandbox foundation (infra/constructs/foundation/sandbox-foundation.ts) --------------------
+  - id: SUP-0016
+    status: reference
+    ruleId: AwsSolutions-S1
+    construct: SandboxFoundation
+    resources: [AccessLogsBucket/Resource]
+    environments: [dev]
+    justification: >-
+      This sandbox bucket is itself the server-access-log destination; logging it into itself
+      would loop. It blocks public access, enforces TLS and expires logs after 90 days.
+    owner: platform-team
+    ticket: baseline-review
+  - id: SUP-0017
+    status: reference
+    ruleId: CloudFormation-Validate::W3010
+    construct: SandboxFoundation
+    resources: [Vpc/*Subnet?/Subnet]
+    environments: [dev]
+    justification: >-
+      The sandbox VPC pins its availability zones in configuration so that synth needs no
+      availability-zones lookup and stays offline in CI; the subnets therefore carry literal AZs.
+    owner: platform-team
+    ticket: baseline-review
+
+  # --- Stale-job reconciler (infra/constructs/job-reconciler.ts) — SUP-0300+ ----------------------
+  - id: SUP-0300
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: JobReconciler
+    resources: [Role/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    allowedActions:
+      - ec2:AssignPrivateIpAddresses
+      - ec2:CreateNetworkInterface
+      - ec2:DeleteNetworkInterface
+      - ec2:DescribeNetworkInterfaces
+      - ec2:DescribeSubnets
+      - ec2:UnassignPrivateIpAddresses
+      - xray:PutTelemetryRecords
+      - xray:PutTraceSegments
+    justification: >-
+      The reconciler Lambda needs X-Ray trace upload and, in the VPC, the ENI management actions the
+      Lambda service uses; none supports resource-level permissions. Its data access is scoped: Query
+      on the status index, GetItem/UpdateItem on JOB# items only, DescribeExecution on this state
+      machine's executions, KMS via DynamoDB only.
+    compensatingControls:
+      - BASE-IAM-002 (Resource "*" only for actions without resource-level permissions)
+      - infra/test/job-reconciler.test.ts (exact statement set, no StartExecution, no other KMS)
+    owner: app-team
+    ticket: baseline-review
+  - id: SUP-0301
+    status: reference
+    ruleId: AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:states:<AWS::Region>:<AWS::AccountId>:execution:<ProcessingWorkflowStateMachineBE123F8D.Name>:*]
+    construct: JobReconciler
+    resources: [Role/DefaultPolicy/Resource]
+    environments: [dev, staging, prod]
+    justification: >-
+      states:DescribeExecution is authorised per execution ARN and every job has its own execution
+      name, so the reconciler needs every execution of exactly one state machine (the processing
+      workflow of its own environment). It reads metadata only (METADATA_ONLY: no input, output or
+      kms:Decrypt) and has no StartExecution or other Step Functions action.
+    compensatingControls:
+      - infra/test/job-reconciler.test.ts (one state machine, DescribeExecution only)
+    owner: app-team
+    ticket: baseline-review

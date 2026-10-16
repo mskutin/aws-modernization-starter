@@ -1,0 +1,166 @@
+# Integration stage — runs only after gates:mandatory passed.
+# PostgreSQL 17.11 and DynamoDB Local run as GitLab `services` (no Testcontainers,
+# no container socket in jobs). Concrete integration:<component> jobs are
+# generated for every components.yaml entry with `test.integration`.
+
+.integration-services:
+  # Safety net: on a runner whose jobs share one user-defined network (`network_mode`), service
+  # aliases (postgres, dynamodb-local) are network-wide and two concurrent jobs would resolve each
+  # other's databases. A stock Docker executor scopes them to the job; the resource group serialises
+  # every job that starts these services, across pipelines, either way.
+  resource_group: ci-shared-network-services
+  services:
+    - name: $IMG_POSTGRES
+      alias: postgres
+      variables:
+        POSTGRES_DB: starter_app
+        # Admin superuser of the job-scoped service (ADR 0220): used only for the
+        # role bootstrap and the per-suite test databases; the API under test runs as starter_app.
+        POSTGRES_USER: starter_admin
+        # Throwaway credential for a job-scoped service container on the CI network.
+        POSTGRES_PASSWORD: ci-only-not-secret
+    - name: $IMG_DYNAMODB
+      alias: dynamodb-local
+      command: ['-jar', 'DynamoDBLocal.jar', '-inMemory', '-sharedDb']
+  variables:
+    # API runtime contract (docs/contracts.md §3) — used by the API process under test
+    # and by black-box suites for direct store assertions.
+    DB_HOST: postgres
+    DB_PORT: '5432'
+    DB_NAME: starter_app
+    # Least-privilege identity of the API (contracts rev. 2 §3.1); TLS is proven by the @starter/db
+    # suite through a test-controlled TLS endpoint, so the plain service may stay plain (APP_RUNTIME=ci).
+    DB_USER: starter_app
+    DB_PASSWORD: ci-only-not-secret-app
+    DB_SSL: disable
+    # apps/api/db/prepare-database.sh (called by api_start): roles as the admin, then migrations as
+    # starter_migrator. Throwaway values for the job-scoped service, like POSTGRES_PASSWORD.
+    DB_ADMIN_USER: starter_admin
+    DB_ADMIN_PASSWORD: ci-only-not-secret
+    DB_BOOTSTRAP_MIGRATOR_PASSWORD: ci-only-not-secret-migrator
+    DB_BOOTSTRAP_APP_PASSWORD: ci-only-not-secret-app
+    DB_BOOTSTRAP_PROCESSOR_PASSWORD: ci-only-not-secret-processor
+    # The local workflow simulator in the API under test reads documents as starter_processor
+    # (load_job_document only; ADR 0230). Same throwaway value as the bootstrap sets above.
+    PROCESSOR_DB_PASSWORD: ci-only-not-secret-processor
+    DB_BOOTSTRAP_RETENTION_PASSWORD: ci-only-not-secret-retention
+    # Local/CI relaxations are gated on APP_RUNTIME (unset = aws, strict).
+    APP_RUNTIME: ci
+    DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+    JOBS_TABLE_NAME: starter-ci-jobs
+    WORKFLOW_MODE: local
+    LOG_LEVEL: warn
+    # Direct PostgreSQL/DynamoDB state assertions must run in CI, never skip.
+    REQUIRE_STORE_ASSERTIONS: '1'
+    API_BASE_URL: http://127.0.0.1:8080
+    # Identity: the API trusts the TEST ONLY IdP that tools/ci/scripts/api-lib.sh starts
+    # in the job; http is accepted only because APP_RUNTIME=ci (refused when APP_RUNTIME=aws).
+    AUTH_ISSUER: http://127.0.0.1:9400
+    AUTH_AUDIENCE: starter-jobs-api
+    AUTH_ALLOW_INSECURE_ISSUER: 'true'
+    AUTH_ALLOWED_CLIENT_IDS: starter-web-local
+    TEST_IDP_URL: http://127.0.0.1:9400
+    TEST_IDP_ENABLE_TEST_ENDPOINTS: 'true'
+    # The suites send far more requests per principal and per address than a person: limits are
+    # raised for them, never disabled (contracts §2.1).
+    RATE_LIMIT_READ_MAX: '5000'
+    RATE_LIMIT_WRITE_MAX: '2000'
+    RATE_LIMIT_UNAUTHENTICATED_MAX: '2000'
+    # Admin endpoints for package-level repository tests (@starter/testing creates per-suite DBs).
+    TEST_DB_HOST: postgres
+    TEST_DB_PORT: '5432'
+    TEST_DB_NAME: starter_app
+    TEST_DB_USER: starter_admin
+    TEST_DB_PASSWORD: ci-only-not-secret
+    TEST_DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+    AWS_REGION: ap-southeast-1
+    # DynamoDB Local accepts any static credentials; these are not secrets.
+    AWS_ACCESS_KEY_ID: local
+    AWS_SECRET_ACCESS_KEY: local
+
+.integration-test:
+  extends: [.node, .integration-services]
+  stage: integration
+  timeout: 20 minutes
+  # script: generated (wait for services, build the package closure, run test.integration)
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths: [reports/]
+    reports:
+      junit: reports/junit/*.xml
+
+# Playwright E2E against the built SPA + API (+ services). Browsers come from the
+# pinned Playwright image (multi-arch); @playwright/test must match its version.
+e2e:playwright:
+  extends: [.node, .integration-services, '.impact:tests-e2e']
+  stage: integration
+  image: $IMG_PLAYWRIGHT
+  needs:
+    - { job: impact, artifacts: false }
+    - { job: 'gates:mandatory', artifacts: false }
+  timeout: 25 minutes
+  variables:
+    CI: 'true'
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+  script:
+    - sh tools/ci/scripts/wait-for-services.sh
+    - pnpm --filter "@starter/tests-e2e..." --filter "@starter/api..." --filter "@starter/web..." --filter "@starter/tool-test-idp..." run --if-present build
+    - sh tools/ci/scripts/e2e.sh
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths: [reports/]
+    reports:
+      junit: reports/junit/*.xml
+
+# ── Security testing (SecTest; contracts rev. 2 §1: SecTest may add jobs here) ──────────────────
+# Leakage scan of CI artifacts (tests/security/src/scanner): no secret formats (JWT, private keys,
+# AWS/GitLab tokens, database URLs with passwords), no CI database password and none of the
+# canaries the security suite wrote (reports/security/<run>/canaries.json) in the reports of the
+# jobs that capture application logs and responses, including the MiniStack emulator jobs.
+# Optional needs: impact-filtered pipelines scan whatever ran; `when: always` also scans the
+# artifacts of failed jobs.
+security:artifact-scan:
+  extends: [.node]
+  stage: review
+  needs:
+    - { job: 'integration:tests-security', artifacts: true, optional: true }
+    - { job: 'integration:tests-integration', artifacts: true, optional: true }
+    - { job: 'integration:api', artifacts: true, optional: true }
+    - { job: 'e2e:playwright', artifacts: true, optional: true }
+    # Emulator layer (.gitlab/ci/emulator.yml): stack outputs, results, diagnostics.
+    - { job: 'integration:ministack:cdk', artifacts: true, optional: true }
+    - { job: 'integration:ministack:workflows', artifacts: true, optional: true }
+  rules:
+    # Task-only schedules run nothing else (ADR 0412: the task allowlist, never a bare test).
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - when: always
+  variables:
+    # The throwaway password of the CI PostgreSQL service (.integration-services above).
+    DB_PASSWORD: ci-only-not-secret
+  script:
+    - mkdir -p reports
+    - pnpm --filter @starter/tests-security run build
+    - node tests/security/dist/scanner/cli.js --dir reports --secret-env DB_PASSWORD --report reports/security/leak-scan.json
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/security/leak-scan.json]
+
+# Built API image config (tests/security/src/container): non-root numeric user (not root:<group>),
+# exec-form entrypoint without a shell, no credential-like ENV, only the expected ports, provenance
+# labels. Complements the build-time USER check and Trivy's layer scan. Exists whenever
+# container:build:api does (`.impact-image:api`: impact rules + the STARTER_CONTAINER_BUILD opt-out).
+security:image-config:api:
+  extends: [.node, '.impact-image:api']
+  stage: package
+  needs: [{ job: 'container:build:api', artifacts: true }]
+  script:
+    - pnpm --filter @starter/tests-security run build
+    - node tests/security/dist/container/cli.js --archive oci-out/api/image.oci.tar --report reports/security/image-config-api.json
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/security/]

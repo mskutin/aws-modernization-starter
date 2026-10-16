@@ -1,0 +1,101 @@
+#
+# Proposed policy baseline - tagging, stateful-resource retention, KMS
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/governance.ts (tagged type list must stay in sync)
+# Note: a clause on an EMPTY filter result is skipped, so presence is asserted with `some ... ==` first
+# (which also reports the resource path, unlike `<filter> !empty`).
+#
+
+let starter_tagged_resources = Resources.*[
+  Type IN [
+    'AWS::S3::Bucket',
+    'AWS::CloudFront::Distribution',
+    'AWS::ECS::Cluster',
+    'AWS::ECS::Service',
+    'AWS::ECS::TaskDefinition',
+    'AWS::Lambda::Function',
+    'AWS::RDS::DBInstance',
+    'AWS::RDS::DBCluster',
+    'AWS::DynamoDB::Table',
+    'AWS::Logs::LogGroup',
+    'AWS::KMS::Key',
+    'AWS::EC2::VPC',
+    'AWS::EC2::NatGateway',
+    'AWS::ElasticLoadBalancingV2::LoadBalancer',
+    'AWS::StepFunctions::StateMachine',
+    'AWS::SecretsManager::Secret',
+    'AWS::ECR::Repository'
+  ]
+]
+
+let starter_stateful_protected = Resources.*[
+  Type IN ['AWS::RDS::DBInstance', 'AWS::RDS::DBCluster', 'AWS::DynamoDB::Table', 'AWS::KMS::Key', 'AWS::S3::Bucket']
+  Properties.DBClusterIdentifier !exists
+  Properties.Tags[ Key == 'Environment' ].Value IN ['staging', 'prod']
+]
+let starter_stateful_global_protected = Resources.*[
+  Type == 'AWS::DynamoDB::GlobalTable'
+  some Properties.Replicas[*].Tags[ Key == 'Environment' ].Value IN ['staging', 'prod']
+]
+let starter_kms_symmetric_keys = Resources.*[
+  Type == 'AWS::KMS::Key'
+  Properties.KeySpec !exists or Properties.KeySpec == 'SYMMETRIC_DEFAULT'
+]
+
+rule BASE_TAG_001 when %starter_tagged_resources !empty {
+  %starter_tagged_resources {
+    some Properties.Tags[*].Key == 'Project'
+    <<BASE-TAG-001: Required tag Project is missing or empty>>
+    Properties.Tags[ Key == 'Project' ].Value == /\S/
+    <<BASE-TAG-001: Required tag Project is missing or empty>>
+    some Properties.Tags[*].Key == 'Environment'
+    <<BASE-TAG-001: Required tag Environment is missing or empty>>
+    Properties.Tags[ Key == 'Environment' ].Value == /\S/
+    <<BASE-TAG-001: Required tag Environment is missing or empty>>
+    some Properties.Tags[*].Key == 'Owner'
+    <<BASE-TAG-001: Required tag Owner is missing or empty>>
+    Properties.Tags[ Key == 'Owner' ].Value == /\S/
+    <<BASE-TAG-001: Required tag Owner is missing or empty>>
+    some Properties.Tags[*].Key == 'CostCentre'
+    <<BASE-TAG-001: Required tag CostCentre is missing or empty>>
+    Properties.Tags[ Key == 'CostCentre' ].Value == /\S/
+    <<BASE-TAG-001: Required tag CostCentre is missing or empty>>
+    some Properties.Tags[*].Key == 'DataClassification'
+    <<BASE-TAG-001: Required tag DataClassification is missing or empty>>
+    Properties.Tags[ Key == 'DataClassification' ].Value == /\S/
+    <<BASE-TAG-001: Required tag DataClassification is missing or empty>>
+    some Properties.Tags[*].Key == 'ManagedBy'
+    <<BASE-TAG-001: Required tag ManagedBy is missing or empty>>
+    Properties.Tags[ Key == 'ManagedBy' ].Value == /\S/
+    <<BASE-TAG-001: Required tag ManagedBy is missing or empty>>
+  }
+}
+
+rule BASE_TAG_002 when %starter_tagged_resources !empty {
+  %starter_tagged_resources {
+    when Properties.Tags[ Key == 'Environment' ] !empty {
+      Properties.Tags[ Key == 'Environment' ].Value IN ['dev', 'staging', 'prod']
+      <<BASE-TAG-002: Environment tag uses an allowed value (dev, staging, prod)>>
+    }
+  }
+}
+
+rule BASE_STATE_001 {
+  when %starter_stateful_protected !empty {
+    %starter_stateful_protected.DeletionPolicy IN ['Retain', 'Snapshot', 'RetainExceptOnCreate']
+    <<BASE-STATE-001: Stateful resources are retained in staging/prod (DeletionPolicy)>>
+    %starter_stateful_protected.UpdateReplacePolicy IN ['Retain', 'Snapshot']
+    <<BASE-STATE-001: Stateful resources are retained in staging/prod (UpdateReplacePolicy)>>
+  }
+  when %starter_stateful_global_protected !empty {
+    %starter_stateful_global_protected.DeletionPolicy IN ['Retain', 'Snapshot', 'RetainExceptOnCreate']
+    <<BASE-STATE-001: Stateful resources are retained in staging/prod (DeletionPolicy)>>
+    %starter_stateful_global_protected.UpdateReplacePolicy IN ['Retain', 'Snapshot']
+    <<BASE-STATE-001: Stateful resources are retained in staging/prod (UpdateReplacePolicy)>>
+  }
+}
+
+rule BASE_KMS_001 when %starter_kms_symmetric_keys !empty {
+  %starter_kms_symmetric_keys.Properties.EnableKeyRotation == true
+  <<BASE-KMS-001: Symmetric KMS keys rotate (EnableKeyRotation)>>
+}

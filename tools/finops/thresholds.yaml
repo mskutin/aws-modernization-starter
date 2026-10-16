@@ -1,0 +1,31 @@
+# FinOps approval thresholds (proposed defaults; agree them with the budget owner).
+#
+# A merge request needs FinOps approval when ANY of these holds:
+#   - any destructive change (always; cannot be disabled),
+#   - an environment's estimated monthly cost rises by >= monthlyIncreaseUsd,
+#   - or by >= monthlyIncreasePercent of its base estimate,
+#   - a resource of a type in newResourceTypesRequiringApproval is added.
+# Approval signals: the MR label (GitLab exposes labels to MR pipelines as
+# CI_MERGE_REQUEST_LABELS) or the variable below set to "true" (e.g. by a
+# protected manual job). Labels are an AUDIT signal, not an authorization
+# control: restrict who may approve with GitLab approval rules / CODEOWNERS.
+schemaVersion: 1
+currency: USD
+approval:
+  monthlyIncreaseUsd: 50
+  monthlyIncreasePercent: 20
+  perEnvironment:
+    dev: { monthlyIncreaseUsd: 100, monthlyIncreasePercent: 50 }
+    prod: { monthlyIncreaseUsd: 25, monthlyIncreasePercent: 10 }
+  destructiveChangesRequireApproval: true
+  newResourceTypesRequiringApproval:
+    - AWS::EC2::NatGateway
+    - AWS::RDS::DBInstance
+    - AWS::RDS::DBCluster
+    - AWS::ElasticLoadBalancingV2::LoadBalancer
+    - AWS::EC2::VPCEndpoint
+approvalSignals:
+  mergeRequestLabel: finops-approved
+  # approvalVariable (optional) is deliberately NOT set: a protected variable never reaches
+  # feature-branch MR pipelines, and an unprotected one would approve every MR. Configure it
+  # only where Maintainers alone can set it (e.g. a protected environment on GitLab Premium).

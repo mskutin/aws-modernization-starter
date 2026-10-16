@@ -1,0 +1,2 @@
+# Locally generated TLS material (bin/dev-up.sh): CA and server key/cert. Never commit.
+tls/

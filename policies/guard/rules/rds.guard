@@ -1,0 +1,72 @@
+#
+# Proposed policy baseline - Amazon RDS
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/rds.ts
+# Aurora member instances (DBClusterIdentifier set) inherit cluster settings.
+#
+
+let starter_rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
+let starter_rds_standalone = Resources.*[
+  Type == 'AWS::RDS::DBInstance'
+  Properties.DBClusterIdentifier !exists
+]
+let starter_rds_clusters = Resources.*[ Type == 'AWS::RDS::DBCluster' ]
+let starter_rds_protected = Resources.*[
+  Type IN ['AWS::RDS::DBInstance', 'AWS::RDS::DBCluster']
+  Properties.DBClusterIdentifier !exists
+  Properties.Tags[ Key == 'Environment' ].Value IN ['staging', 'prod']
+]
+let starter_rds_pg_parameter_groups = Resources.*[
+  Type IN ['AWS::RDS::DBParameterGroup', 'AWS::RDS::DBClusterParameterGroup']
+  Properties.Family == /^(aurora-)?postgres(ql)?[0-9]+/
+]
+let starter_rds_legacy_pg_instances = Resources.*[
+  Type == 'AWS::RDS::DBInstance'
+  Properties.Engine == 'postgres'
+  Properties.EngineVersion == /^(9|1[0-4])(\.|$)/
+]
+
+rule BASE_RDS_001 {
+  when %starter_rds_standalone !empty {
+    %starter_rds_standalone.Properties.StorageEncrypted == true
+    <<BASE-RDS-001: RDS storage is encrypted>>
+  }
+  when %starter_rds_clusters !empty {
+    %starter_rds_clusters.Properties.StorageEncrypted == true
+    <<BASE-RDS-001: RDS storage is encrypted>>
+  }
+}
+
+rule BASE_RDS_002 when %starter_rds_instances !empty {
+  %starter_rds_instances.Properties.PubliclyAccessible == false
+  <<BASE-RDS-002: RDS instances are not publicly accessible (PubliclyAccessible must be false)>>
+}
+
+rule BASE_RDS_003 when %starter_rds_protected !empty {
+  %starter_rds_protected.Properties.DeletionProtection == true
+  <<BASE-RDS-003: RDS deletion protection in staging/prod>>
+}
+
+rule BASE_RDS_004 when %starter_rds_protected !empty {
+  %starter_rds_protected.Properties.BackupRetentionPeriod >= 7
+  <<BASE-RDS-004: RDS automated backups >= 7 days in staging/prod>>
+}
+
+rule BASE_RDS_005 {
+  when %starter_rds_pg_parameter_groups !empty {
+    %starter_rds_pg_parameter_groups {
+      when Properties.Parameters['rds.force_ssl'] exists {
+        Properties.Parameters['rds.force_ssl'] IN ['1', 1]
+        <<BASE-RDS-005: PostgreSQL connections require TLS (rds.force_ssl must be 1)>>
+      }
+      when Properties.Family == /^(aurora-)?postgres(ql)?(9|1[0-4])(\.|$)/ {
+        Properties.Parameters['rds.force_ssl'] exists
+        <<BASE-RDS-005: PostgreSQL connections require TLS (rds.force_ssl must be set to 1 below major 15)>>
+      }
+    }
+  }
+  when %starter_rds_legacy_pg_instances !empty {
+    %starter_rds_legacy_pg_instances.Properties.DBParameterGroupName exists
+    <<BASE-RDS-005: PostgreSQL < 15 needs a parameter group with rds.force_ssl=1>>
+  }
+}

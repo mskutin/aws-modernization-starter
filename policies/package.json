@@ -1,0 +1,50 @@
+{
+  "name": "@starter/policies",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Proposed policy-as-code baseline: cdk-nag BaselineChecks pack, CloudFormation Guard rules and governed exceptions. NOT an approved control set of any organization or regulator.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "starter-policies": "./dist/cli/bin.js"
+  },
+  "files": [
+    "dist",
+    "guard",
+    "exceptions"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "policies:test": "vitest run",
+    "check-exceptions": "tsx src/cli/bin.ts check-exceptions",
+    "approval-digests": "tsx src/cli/bin.ts approval-digests",
+    "guard:install": "sh scripts/install-cfn-guard.sh",
+    "guard:validate": "tsx src/cli/bin.ts guard-validate",
+    "guard:test": "tsx src/cli/bin.ts guard-test",
+    "guard:gen-tests": "tsx test/generate-guard-tests.ts",
+    "catalogue": "tsx src/cli/bin.ts catalogue"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "zod": "4.6.5"
+  },
+  "peerDependencies": {
+    "aws-cdk-lib": "^2.257.0",
+    "cdk-nag": "^3.0.0",
+    "constructs": "^10.5.1"
+  },
+  "devDependencies": {
+    "aws-cdk-lib": "2.272.0",
+    "cdk-nag": "3.0.2",
+    "constructs": "10.8.1"
+  }
+}

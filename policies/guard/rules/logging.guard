@@ -1,0 +1,25 @@
+#
+# Proposed policy baseline - logging and retention
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/logging.ts
+#
+
+let starter_log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
+let starter_state_machines = Resources.*[ Type == 'AWS::StepFunctions::StateMachine' ]
+
+rule BASE_LOG_001 when %starter_log_groups !empty {
+  %starter_log_groups.Properties.RetentionInDays >= 1
+  <<BASE-LOG-001: Log groups have a retention period (RetentionInDays)>>
+}
+
+rule BASE_LOG_002 when %starter_log_groups !empty {
+  %starter_log_groups.Properties.KmsKeyId exists
+  <<BASE-LOG-002: Log groups are encrypted with KMS (KmsKeyId)>>
+}
+
+rule BASE_LOG_003 when %starter_state_machines !empty {
+  %starter_state_machines.Properties.LoggingConfiguration.Level IN ['ALL', 'ERROR', 'FATAL']
+  <<BASE-LOG-003: State machines emit execution logs (Level ALL/ERROR/FATAL)>>
+  %starter_state_machines.Properties.LoggingConfiguration.Destinations !empty
+  <<BASE-LOG-003: State machines emit execution logs (destination required)>>
+}

@@ -1,0 +1,11 @@
+schemaVersion: 1
+exceptions:
+  - id: EXC-1
+    ruleId: S3-001
+    resource: ''
+    environments: [qa]
+    justification: too short
+    owner: me
+    createdAt: 13/10/2026
+    expiresAt: '2026-12-31'
+    unexpected: true

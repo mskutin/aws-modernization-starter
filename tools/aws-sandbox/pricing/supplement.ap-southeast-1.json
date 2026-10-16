@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "kind": "starter-aws-sandbox/price-supplement",
+  "version": "2026.10.14-1",
+  "region": "ap-southeast-1",
+  "currency": "USD",
+  "capturedAt": "2026-10-14",
+  "notLivePricing": "MANUALLY TRANSCRIBED SNAPSHOT, NOT LIVE PRICING. On-demand list prices, no tax, free tier, credits or discounts.",
+  "source": "Public AWS Price List offer files, retrieved 2026-10-14; not live pricing. Manually transcribed (offer index published 2026-10-14T03:30:16Z); each price names its offer, offer version and SKU. Only prices that are NOT in tools/finops/pricing/ap-southeast-1.yaml (snapshot 2026.10.13-1) are listed here.",
+  "prices": {
+    "cloudfrontFunctionsPerMillion": {
+      "usd": 0.1,
+      "unit": "million function executions",
+      "offer": "AmazonCloudFront",
+      "offerVersion": "20261003000426",
+      "sku": "QAZUUEJG8GARJCET",
+      "usageType": "Executions-CloudFrontFunctions"
+    },
+    "cloudfrontToOriginGb": {
+      "usd": 0.06,
+      "unit": "GB to origin (Asia)",
+      "offer": "AmazonCloudFront",
+      "offerVersion": "20261003000426",
+      "sku": "U8P37H38743VG7RS",
+      "usageType": "AP-DataTransfer-Out-OBytes"
+    },
+    "cloudfrontInvalidationPath": {
+      "usd": 0.005,
+      "unit": "invalidation path (no free tier applied)",
+      "offer": "AmazonCloudFront",
+      "offerVersion": "20261003000426",
+      "sku": "U3HVZF9WJEM7TE55",
+      "usageType": "Invalidations"
+    },
+    "cloudwatchDashboardMonth": {
+      "usd": 3,
+      "unit": "dashboard-month (prorated hourly)",
+      "offer": "AmazonCloudWatch",
+      "offerVersion": "20261007115540",
+      "sku": "5P8PBB6MXV325TDC",
+      "usageType": "DashboardsUsageHour-Basic"
+    },
+    "cloudwatchCustomMetricMonth": {
+      "usd": 0.3,
+      "unit": "metric-month (first 10,000; prorated hourly)",
+      "offer": "AmazonCloudWatch",
+      "offerVersion": "20261007115540",
+      "sku": "2BF5WZ4QVWF9XRRT",
+      "usageType": "APS1-CW:MetricMonitorUsage"
+    },
+    "containerInsightsEcsMetricMonth": {
+      "usd": 0.07,
+      "unit": "Container Insights (enhanced) ECS metric-month (prorated hourly)",
+      "offer": "AmazonCloudWatch",
+      "offerVersion": "20261007115540",
+      "sku": "FZKVGGMWGNYQBMYF",
+      "usageType": "APS1-CW:MetricsUsage (MetricStorage:CI-ECS)"
+    },
+    "xrayTracesPerMillion": {
+      "usd": 5,
+      "unit": "million traces recorded",
+      "offer": "AWSXRay",
+      "offerVersion": "20260911124622",
+      "sku": "XUCT4WUXRNZDVNN4",
+      "usageType": "APS1-XRay-TracesStored"
+    },
+    "ecrStorageGbMonth": {
+      "usd": 0.1,
+      "unit": "GB-month",
+      "offer": "AmazonECR",
+      "offerVersion": "20260911124425",
+      "sku": "7V2YHG7PQ82BEXNB",
+      "usageType": "APS1-TimedStorage-ByteHrs"
+    },
+    "dataTransferOutInternetGb": {
+      "usd": 0.12,
+      "unit": "GB out to the internet (first 10 TB, beyond the global free tier)",
+      "offer": "AWSDataTransfer",
+      "offerVersion": "20260916132208",
+      "sku": "SDHP4R7WGBVJPQPY",
+      "usageType": "APS1-DataTransfer-Out-Bytes"
+    },
+    "dataTransferInterAzGb": {
+      "usd": 0.01,
+      "unit": "GB per direction (inter-AZ)",
+      "offer": "AWSDataTransfer",
+      "offerVersion": "20260916132208",
+      "sku": "FQAASNCUW2QJHGH9",
+      "usageType": "APS1-DataTransfer-Regional-Bytes"
+    },
+    "s3PutPer1k": {
+      "usd": 0.005,
+      "unit": "1,000 PUT/COPY/POST/LIST requests",
+      "offer": "AmazonS3",
+      "offerVersion": "20261012231102",
+      "sku": "VHRJWKRHEA6VHEFY",
+      "usageType": "APS1-Requests-Tier1"
+    },
+    "s3GetPer10k": {
+      "usd": 0.004,
+      "unit": "10,000 GET and other requests",
+      "offer": "AmazonS3",
+      "offerVersion": "20261012231102",
+      "sku": "T469UNPYX78434EG",
+      "usageType": "APS1-Requests-Tier2"
+    },
+    "secretsManagerApiPer10k": {
+      "usd": 0.05,
+      "unit": "10,000 API requests",
+      "offer": "AWSSecretsManager",
+      "offerVersion": "20260911124610",
+      "sku": "KAUJ7G87ND7HD8N8",
+      "usageType": "APS1-AWSSecretsManagerAPIRequest"
+    },
+    "eventbridgeScheduledInvocationPerMillion": {
+      "usd": 1.25,
+      "unit": "million scheduled invocations (EventBridge Scheduler price used as an upper bound for scheduled rules)",
+      "offer": "AWSEvents",
+      "offerVersion": "20260924163903",
+      "sku": "BS7HDKF73Z2QDNC5",
+      "usageType": "APS1-ScheduledInvocation"
+    },
+    "rdsT4gCpuCreditVcpuHour": {
+      "usd": 0.075,
+      "unit": "vCPU-hour of surplus T4g CPU credits (risk bound only)",
+      "offer": "AmazonRDS",
+      "offerVersion": "20261006224050",
+      "sku": "MP6SPJ889449AMT3",
+      "usageType": "APS1-CPUCredits:db.t4g"
+    },
+    "route53HostedZoneMonth": {
+      "usd": 0.5,
+      "unit": "hosted zone-month (first 25; NOT prorated)",
+      "offer": "AmazonRoute53",
+      "offerVersion": "20260911124504",
+      "sku": "KVPGEJE88UW8S779",
+      "usageType": "HostedZone"
+    }
+  },
+  "billingNotes": {
+    "kmsKeyPendingDeletion": {
+      "status": "NOT IN THE PRICE SNAPSHOT",
+      "repoQuote": "\"no charge for customer managed KMS keys that ... are scheduled for deletion\"",
+      "quotedIn": "AWS KMS pricing page, https://aws.amazon.com/kms/pricing/ (read 2026-10-14)",
+      "treatment": "likely residual 0; the worst case prices the keys as if billed until their deletion date, because this tool cannot re-verify the pricing page offline"
+    },
+    "secretPendingDeletion": {
+      "status": "NOT IN THE PRICE SNAPSHOT",
+      "repoQuote": "no charge once marked for deletion",
+      "quotedIn": "AWS Secrets Manager pricing page and user guide 'Delete a secret' (read 2026-10-14)",
+      "treatment": "likely residual 0; worst case 0.40/month prorated until the recovery window ends"
+    },
+    "dynamodbSystemBackup": {
+      "status": "NOT IN THE PRICE SNAPSHOT",
+      "repoQuote": "\"at no additional cost\"",
+      "quotedIn": "Amazon DynamoDB developer guide (PointInTimeRecovery_Howitworks), 35 days (read 2026-10-14)",
+      "treatment": "residual 0"
+    }
+  }
+}

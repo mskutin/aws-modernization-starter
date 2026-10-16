@@ -1,0 +1,50 @@
+{
+  "name": "@starter/documents",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Claim-check document source for the workflow steps: loads a job's document through the SECURITY DEFINER load_job_document() as starter_processor and verifies its SHA-256; in-memory twin for tests; TEST-ONLY table source and fault injection for the AWS mini-stack.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./test-table": {
+      "types": "./dist/test-table.d.ts",
+      "default": "./dist/test-table.js"
+    },
+    "./test-faults": {
+      "types": "./dist/test-faults.d.ts",
+      "default": "./dist/test-faults.js"
+    },
+    "./lambda": {
+      "types": "./dist/lambda.d.ts",
+      "default": "./dist/lambda.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration"
+  },
+  "dependencies": {
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/contracts": "workspace:*",
+    "@starter/db": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@starter/testing": "workspace:*",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1"
+  }
+}

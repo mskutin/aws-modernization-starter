@@ -1,0 +1,775 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "AWS Modernization Starter — Document Analysis Jobs API",
+    "version": "1.1.0",
+    "description": "Submit plain-text documents for asynchronous analysis and poll for results. Every /v1 operation requires an OAuth 2.0 bearer access token (JWT) from the trusted OpenID Connect issuer; callers only ever see their own jobs. Errors use RFC 9457 problem details (application/problem+json)."
+  },
+  "servers": [{ "url": "/", "description": "Same origin (CloudFront routes /v1/* to the API)." }],
+  "tags": [
+    { "name": "jobs", "description": "Document-analysis jobs." },
+    { "name": "health", "description": "Liveness and readiness probes." },
+    { "name": "meta", "description": "API description." }
+  ],
+  "paths": {
+    "/v1/jobs": {
+      "post": {
+        "operationId": "createJob",
+        "tags": ["jobs"],
+        "summary": "Submit a document-analysis job",
+        "description": "Validates the request, persists the job (owned by the calling principal) and starts the processing workflow. Retries by the same principal with the same Idempotency-Key (or, without the header, an identical body) return the original job with `Idempotent-Replayed: true` instead of creating a duplicate. Keys are scoped to the principal: other callers never see each other's jobs. Requires scope `jobs:write`.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,128}$" },
+            "description": "Optional client-chosen key, scoped to the calling principal. Without it the server derives one from a SHA-256 hash of the canonical request body."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateJobRequest" },
+              "examples": {
+                "document": {
+                  "summary": "A short document (passes the ≥ 10 words business rule)",
+                  "value": {
+                    "title": "Cloud migration notes",
+                    "content": "Cloud migration is a journey, not a single event. Teams move applications in waves, measure the outcome and keep improving.",
+                    "options": { "topTerms": 5 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Idempotent replay: the previously created job.",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "Idempotent-Replayed": { "$ref": "#/components/headers/Idempotent-Replayed" },
+              "Location": {
+                "description": "URL of the job resource.",
+                "schema": { "type": "string" }
+              },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Job" } } }
+          },
+          "202": {
+            "description": "Job accepted for asynchronous processing.",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "Location": {
+                "description": "URL of the created job resource.",
+                "schema": { "type": "string" }
+              },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Job" },
+                "examples": {
+                  "accepted": {
+                    "summary": "Newly created job, workflow not started yet",
+                    "value": {
+                      "jobId": "4194b63d-9c1e-4c8a-9f43-1a2b3c4d5e6f",
+                      "title": "Cloud migration notes",
+                      "status": "PENDING",
+                      "contractVersion": "1.1.0",
+                      "options": { "topTerms": 5 },
+                      "contentLength": 123,
+                      "contentSha256": "4f142e45547de462b18b1033ddbca94c58b0b7ae4f6f01097b0e9a4dfdcc7814",
+                      "createdAt": "2026-10-13T10:00:00.000Z",
+                      "updatedAt": "2026-10-13T10:00:00.000Z",
+                      "result": null,
+                      "error": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request failed schema validation.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/Problem" },
+                "examples": {
+                  "validation": {
+                    "summary": "Empty title",
+                    "value": {
+                      "type": "urn:starter:problem:validation-error",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "Request validation failed.",
+                      "instance": "/v1/jobs",
+                      "requestId": "c1cb3243-5f2d-4c7e-9a1b-2b3c4d5e6f70",
+                      "errors": [{ "path": "body.title", "message": "must not be empty" }]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired or otherwise invalid bearer token (the response never says which check failed).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "WWW-Authenticate": { "$ref": "#/components/headers/WWW-Authenticate" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/Problem" },
+                "examples": {
+                  "unauthorized": {
+                    "summary": "No valid token",
+                    "value": {
+                      "type": "urn:starter:problem:unauthorized",
+                      "title": "Unauthorized",
+                      "status": 401,
+                      "detail": "A valid bearer access token is required.",
+                      "instance": "/v1/jobs",
+                      "requestId": "0b6a1f8e-4f0e-4a43-9d55-3c2b1a0f9e8d"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token is valid but lacks the required scope (default `jobs:write`).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "WWW-Authenticate": { "$ref": "#/components/headers/WWW-Authenticate" }
+            },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "413": {
+            "description": "Request body exceeds the size limit.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "415": {
+            "description": "Content-Type is not application/json.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key was reused with a different request body.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "429": {
+            "description": "Rate limit exhausted (per principal, or per client address for failed authentication).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "503": {
+            "description": "A dependency (database, state store, workflow service or the identity provider keys) is unavailable; retry with the same Idempotency-Key.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "default": {
+            "description": "Unexpected error.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listJobs",
+        "tags": ["jobs"],
+        "summary": "List the caller's jobs, newest first",
+        "description": "Only jobs owned by the calling principal are listed. Keyset pagination (`limit` 1-100). Requires scope `jobs:read`.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "description": "Opaque `nextCursor` value from a previous page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of jobs.",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/JobList" } }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters or cursor.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired or otherwise invalid bearer token (the response never says which check failed).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "WWW-Authenticate": { "$ref": "#/components/headers/WWW-Authenticate" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/Problem" },
+                "examples": {
+                  "unauthorized": {
+                    "summary": "No valid token",
+                    "value": {
+                      "type": "urn:starter:problem:unauthorized",
+                      "title": "Unauthorized",
+                      "status": 401,
+                      "detail": "A valid bearer access token is required.",
+                      "instance": "/v1/jobs",
+                      "requestId": "0b6a1f8e-4f0e-4a43-9d55-3c2b1a0f9e8d"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token is valid but lacks the required scope (default `jobs:read`).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "WWW-Authenticate": { "$ref": "#/components/headers/WWW-Authenticate" }
+            },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "429": {
+            "description": "Rate limit exhausted (per principal, or per client address for failed authentication).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "503": {
+            "description": "A dependency is unavailable.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "default": {
+            "description": "Unexpected error.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs/{jobId}": {
+      "get": {
+        "operationId": "getJob",
+        "tags": ["jobs"],
+        "summary": "Get a job with its current status, results or error",
+        "description": "Answers 404 both for unknown ids and for jobs owned by another principal (no existence oracle). Requires scope `jobs:read`.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Server-assigned job identifier (UUID)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The job.",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Job" } } }
+          },
+          "400": {
+            "description": "jobId is not a UUID.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, expired or otherwise invalid bearer token (the response never says which check failed).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "WWW-Authenticate": { "$ref": "#/components/headers/WWW-Authenticate" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/Problem" },
+                "examples": {
+                  "unauthorized": {
+                    "summary": "No valid token",
+                    "value": {
+                      "type": "urn:starter:problem:unauthorized",
+                      "title": "Unauthorized",
+                      "status": 401,
+                      "detail": "A valid bearer access token is required.",
+                      "instance": "/v1/jobs",
+                      "requestId": "0b6a1f8e-4f0e-4a43-9d55-3c2b1a0f9e8d"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The token is valid but lacks the required scope (default `jobs:read`).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "WWW-Authenticate": { "$ref": "#/components/headers/WWW-Authenticate" }
+            },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "404": {
+            "description": "No job with this id owned by the caller.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "429": {
+            "description": "Rate limit exhausted (per principal, or per client address for failed authentication).",
+            "headers": {
+              "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" },
+              "Retry-After": { "$ref": "#/components/headers/Retry-After" },
+              "RateLimit-Limit": { "$ref": "#/components/headers/RateLimit-Limit" },
+              "RateLimit-Remaining": { "$ref": "#/components/headers/RateLimit-Remaining" },
+              "RateLimit-Reset": { "$ref": "#/components/headers/RateLimit-Reset" }
+            },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "503": {
+            "description": "A dependency is unavailable.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          },
+          "default": {
+            "description": "Unexpected error.",
+            "headers": { "X-Request-Id": { "$ref": "#/components/headers/X-Request-Id" } },
+            "content": {
+              "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "tags": ["health"],
+        "summary": "Liveness probe (200 unless shutting down)",
+        "responses": {
+          "200": {
+            "description": "Alive.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } }
+            }
+          },
+          "503": {
+            "description": "Shutting down.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "tags": ["health"],
+        "summary": "Readiness probe (200 only when PostgreSQL and DynamoDB are reachable)",
+        "responses": {
+          "200": {
+            "description": "Ready.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } }
+            }
+          },
+          "503": {
+            "description": "Not ready or draining.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenApiDocument",
+        "tags": ["meta"],
+        "summary": "This OpenAPI 3.1 document",
+        "responses": {
+          "200": { "description": "OpenAPI document.", "content": { "application/json": {} } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateJobRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Human-readable document title (trimmed)."
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40000,
+            "pattern": "\\S",
+            "description": "Plain-text document to analyse."
+          },
+          "options": { "default": { "topTerms": 10 }, "$ref": "#/components/schemas/JobOptions" }
+        },
+        "required": ["title", "content"],
+        "additionalProperties": false
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "unavailable"] },
+          "draining": { "type": "boolean" },
+          "checks": {
+            "type": "object",
+            "propertyNames": { "type": "string" },
+            "additionalProperties": { "type": "string", "enum": ["ok", "fail"] }
+          }
+        },
+        "required": ["status", "draining"]
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Server-assigned job identifier (UUID)."
+          },
+          "title": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/JobStatus" },
+          "contractVersion": { "type": "string" },
+          "options": {
+            "type": "object",
+            "properties": { "topTerms": { "type": "integer", "minimum": 1, "maximum": 25 } },
+            "required": ["topTerms"]
+          },
+          "contentLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Length of the submitted content in characters."
+          },
+          "contentSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "result": { "anyOf": [{ "$ref": "#/components/schemas/JobResult" }, { "type": "null" }] },
+          "error": { "anyOf": [{ "$ref": "#/components/schemas/JobError" }, { "type": "null" }] }
+        },
+        "required": [
+          "jobId",
+          "title",
+          "status",
+          "contractVersion",
+          "options",
+          "contentLength",
+          "contentSha256",
+          "createdAt",
+          "updatedAt",
+          "result",
+          "error"
+        ]
+      },
+      "JobError": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Machine-readable error name, e.g. JobValidationError."
+          },
+          "message": { "type": "string" }
+        },
+        "required": ["name", "message"]
+      },
+      "JobList": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/JobSummary" } },
+          "nextCursor": {
+            "description": "Opaque cursor for the next page; null when there are no more results.",
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["items", "nextCursor"]
+      },
+      "JobOptions": {
+        "type": "object",
+        "properties": {
+          "topTerms": {
+            "default": 10,
+            "description": "How many most-frequent terms (stop words excluded) to report.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25
+          }
+        },
+        "additionalProperties": false
+      },
+      "JobResult": {
+        "type": "object",
+        "properties": {
+          "algorithmVersion": {
+            "type": "string",
+            "description": "Version of the deterministic analysis algorithm."
+          },
+          "wordCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "uniqueWordCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "sentenceCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "paragraphCount": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "characterCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Unicode code points after NFC normalisation."
+          },
+          "averageWordLength": { "type": "number", "minimum": 0 },
+          "averageSentenceLength": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Words per sentence."
+          },
+          "lexicalDiversity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Unique words / total words."
+          },
+          "readingTimeSeconds": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "topTerms": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TermFrequency" }
+          },
+          "checksumSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "SHA-256 of the UTF-8 encoded content as submitted."
+          }
+        },
+        "required": [
+          "algorithmVersion",
+          "wordCount",
+          "uniqueWordCount",
+          "sentenceCount",
+          "paragraphCount",
+          "characterCount",
+          "averageWordLength",
+          "averageSentenceLength",
+          "lexicalDiversity",
+          "readingTimeSeconds",
+          "topTerms",
+          "checksumSha256"
+        ]
+      },
+      "JobStatus": {
+        "type": "string",
+        "enum": ["PENDING", "VALIDATING", "PROCESSING", "SUCCEEDED", "FAILED"],
+        "description": "Lifecycle status. PENDING → VALIDATING → PROCESSING → SUCCEEDED, or → FAILED from any non-terminal status."
+      },
+      "JobSummary": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Server-assigned job identifier (UUID)."
+          },
+          "title": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/JobStatus" },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": ["jobId", "title", "status", "createdAt", "updatedAt"]
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI reference identifying the problem type."
+          },
+          "title": { "type": "string" },
+          "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+          "detail": { "type": "string" },
+          "instance": { "type": "string" },
+          "requestId": {
+            "description": "Correlates with the X-Request-Id header and logs.",
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProblemFieldError" }
+          }
+        },
+        "required": ["type", "title", "status"]
+      },
+      "ProblemFieldError": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Dot-separated location of the invalid value, e.g. body.title."
+          },
+          "message": { "type": "string" }
+        },
+        "required": ["path", "message"]
+      },
+      "TermFrequency": {
+        "type": "object",
+        "properties": {
+          "term": { "type": "string" },
+          "count": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+        },
+        "required": ["term", "count"]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "OAuth 2.0 access token (JWT) issued by the configured OpenID Connect issuer. The API verifies the signature against the issuer JWKS (asymmetric algorithms only) and enforces iss, aud, exp/nbf and the operation scope (default `jobs:read` for GET, `jobs:write` for POST)."
+      }
+    },
+    "headers": {
+      "X-Request-Id": {
+        "description": "Request correlation id (echoed from the request when valid, otherwise generated).",
+        "schema": { "type": "string" }
+      },
+      "Idempotent-Replayed": {
+        "description": "Present (value \"true\") when the response replays an earlier request.",
+        "schema": { "type": "string", "enum": ["true"] }
+      },
+      "WWW-Authenticate": {
+        "description": "RFC 6750 challenge, e.g. `Bearer realm=\"starter-api\", error=\"invalid_token\"` (401) or `Bearer realm=\"starter-api\", error=\"insufficient_scope\", scope=\"jobs:read\"` (403).",
+        "schema": { "type": "string" }
+      },
+      "Retry-After": {
+        "description": "Seconds until the rate-limit window resets.",
+        "schema": { "type": "integer", "minimum": 1 }
+      },
+      "RateLimit-Limit": {
+        "description": "Requests allowed in the current window for this caller.",
+        "schema": { "type": "integer", "minimum": 1 }
+      },
+      "RateLimit-Remaining": {
+        "description": "Requests left in the current window.",
+        "schema": { "type": "integer", "minimum": 0 }
+      },
+      "RateLimit-Reset": {
+        "description": "Seconds until the current window resets.",
+        "schema": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

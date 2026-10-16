@@ -1,0 +1,39 @@
+{
+  "name": "@starter/fn-reconciler",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Stale-job reconciler: closes jobs left non-terminal after workflow failures, against the authoritative execution state (scheduled Lambda on AWS; opt-in loop in the API for the local simulation).",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/bundle.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.1149.0",
+    "@aws-sdk/client-sfn": "3.1149.0",
+    "@aws-sdk/lib-dynamodb": "3.1149.0",
+    "@starter/config": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/job-state": "workspace:*",
+    "@starter/observability": "workspace:*",
+    "@starter/workflow-processing": "workspace:*"
+  },
+  "devDependencies": {
+    "@starter/testing": "workspace:*",
+    "esbuild": "0.28.2"
+  }
+}

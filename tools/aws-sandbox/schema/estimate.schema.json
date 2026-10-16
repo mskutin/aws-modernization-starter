@@ -1,0 +1,442 @@
+{
+  "title": "starter-aws-sandbox estimate",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "starter-aws-sandbox/estimate"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "minLength": 10
+    },
+    "phase": {
+      "anyOf": [
+        {
+          "type": "number",
+          "const": 1
+        },
+        {
+          "type": "number",
+          "const": 2
+        }
+      ]
+    },
+    "disclaimer": {
+      "type": "string"
+    },
+    "priceBasis": {
+      "type": "object",
+      "properties": {
+        "snapshot": {
+          "type": "string"
+        },
+        "snapshotCapturedAt": {
+          "type": "string"
+        },
+        "supplement": {
+          "type": "string"
+        },
+        "supplementCapturedAt": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string",
+          "const": "USD"
+        },
+        "hoursPerMonth": {
+          "type": "number"
+        },
+        "notLivePricing": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "snapshot",
+        "snapshotCapturedAt",
+        "supplement",
+        "supplementCapturedAt",
+        "region",
+        "currency",
+        "hoursPerMonth",
+        "notLivePricing"
+      ],
+      "additionalProperties": false
+    },
+    "topology": {
+      "type": "object",
+      "properties": {
+        "phase": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 1
+            },
+            {
+              "type": "number",
+              "const": 2
+            }
+          ]
+        },
+        "basis": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["contract", "synth"]
+            },
+            "ref": {
+              "type": "string"
+            },
+            "stacks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": ["kind", "ref", "stacks"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["phase", "basis"],
+      "additionalProperties": {}
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "value", "unit", "basis"],
+        "additionalProperties": false
+      }
+    },
+    "lineItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "billingService": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["hourly", "hourly-partial", "usage", "one-time"]
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "quantityUnit": {
+            "type": "string"
+          },
+          "unitPriceUsd": {
+            "type": "number"
+          },
+          "priceUnit": {
+            "type": "string"
+          },
+          "priceRef": {
+            "type": "string"
+          },
+          "formula": {
+            "type": "string"
+          },
+          "usdPerHour": {
+            "type": "number"
+          },
+          "oneTimeUsd": {
+            "type": "number"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["HIGH", "MEDIUM", "LOW"]
+          },
+          "basis": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "component",
+          "billingService",
+          "kind",
+          "quantity",
+          "quantityUnit",
+          "unitPriceUsd",
+          "priceUnit",
+          "priceRef",
+          "formula",
+          "usdPerHour",
+          "oneTimeUsd",
+          "confidence",
+          "basis"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "perHourUsd": {
+          "type": "number"
+        },
+        "perHourFixedUsd": {
+          "type": "number"
+        },
+        "perHourUsageUsd": {
+          "type": "number"
+        },
+        "oneTimeUsd": {
+          "type": "number"
+        },
+        "partialHourRoundingUsd": {
+          "type": "number"
+        },
+        "byHours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hours": {
+                "type": "number"
+              },
+              "workloadUsd": {
+                "type": "number"
+              },
+              "withAccountLevelUsd": {
+                "type": "number"
+              },
+              "withAccountLevelAndTaxUsd": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "hours",
+              "workloadUsd",
+              "withAccountLevelUsd",
+              "withAccountLevelAndTaxUsd"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "perHourUsd",
+        "perHourFixedUsd",
+        "perHourUsageUsd",
+        "oneTimeUsd",
+        "partialHourRoundingUsd",
+        "byHours"
+      ],
+      "additionalProperties": false
+    },
+    "accountLevel": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "UNKNOWN"
+        },
+        "lowUsd": {
+          "type": "number"
+        },
+        "highUsd": {
+          "type": "number"
+        },
+        "usedUsd": {
+          "type": "number"
+        },
+        "basis": {
+          "type": "string"
+        }
+      },
+      "required": ["status", "lowUsd", "highUsd", "usedUsd", "basis"],
+      "additionalProperties": false
+    },
+    "residual": {
+      "type": "object",
+      "properties": {
+        "horizon": {
+          "type": "string",
+          "const": "first 30 days after teardown"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "item": {
+                "type": "string"
+              },
+              "likelyUsd": {
+                "type": "number"
+              },
+              "worstUsd": {
+                "type": "number"
+              },
+              "basis": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "item", "likelyUsd", "worstUsd", "basis"],
+            "additionalProperties": false
+          }
+        },
+        "likelyUsd": {
+          "type": "number"
+        },
+        "worstUsd": {
+          "type": "number"
+        },
+        "kmsPendingDeletionCharge": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "repoQuote": {
+              "type": "string"
+            },
+            "quotedIn": {
+              "type": "string"
+            },
+            "treatment": {
+              "type": "string"
+            }
+          },
+          "required": ["status", "repoQuote", "quotedIn", "treatment"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["horizon", "items", "likelyUsd", "worstUsd", "kmsPendingDeletionCharge"],
+      "additionalProperties": false
+    },
+    "stopRule": {
+      "type": "object",
+      "properties": {
+        "budgetUsd": {
+          "type": "number"
+        },
+        "stopUsd": {
+          "type": "number"
+        },
+        "spentUsd": {
+          "type": "number"
+        },
+        "marginPercent": {
+          "type": "number"
+        },
+        "taxRatePercent": {
+          "type": "number"
+        },
+        "accountLevelUsd": {
+          "type": "number"
+        },
+        "allowedEstimateUsd": {
+          "type": "number"
+        },
+        "fixedUsd": {
+          "type": "number"
+        },
+        "maxRuntimeHours": {
+          "type": "number"
+        },
+        "maxRuntimeHoursWithoutAccountLevel": {
+          "type": "number"
+        },
+        "timeBoxHours": {
+          "type": "number"
+        },
+        "timeBoxBasis": {
+          "type": "string"
+        },
+        "effectiveMaxRuntimeHours": {
+          "type": "number"
+        },
+        "bindingLimit": {
+          "type": "string",
+          "enum": ["time-box", "stop-rule"]
+        },
+        "teardownHours": {
+          "type": "number"
+        },
+        "formula": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "budgetUsd",
+        "stopUsd",
+        "spentUsd",
+        "marginPercent",
+        "taxRatePercent",
+        "accountLevelUsd",
+        "allowedEstimateUsd",
+        "fixedUsd",
+        "maxRuntimeHours",
+        "maxRuntimeHoursWithoutAccountLevel",
+        "timeBoxHours",
+        "timeBoxBasis",
+        "effectiveMaxRuntimeHours",
+        "bindingLimit",
+        "teardownHours",
+        "formula"
+      ],
+      "additionalProperties": false
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "generatedAt",
+    "phase",
+    "disclaimer",
+    "priceBasis",
+    "topology",
+    "assumptions",
+    "lineItems",
+    "totals",
+    "accountLevel",
+    "residual",
+    "stopRule",
+    "notes"
+  ],
+  "additionalProperties": false
+}

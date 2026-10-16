@@ -1,0 +1,99 @@
+# Advisory AI code review + human approval. Neither replaces the deterministic
+# gates: gates:mandatory and the integration jobs remain authoritative.
+#
+# Both jobs rely on stage order (no `needs`) so they start only after every
+# earlier stage — including the generated integration:* jobs — has finished.
+
+# PR-Agent reviews the actual MR diff and posts one comment. OFF by default: neither job exists in
+# a pipeline unless a Maintainer opts in. It runs only when explicitly enabled AND an endpoint, model
+# and token are configured:
+#   AI_REVIEW_ENABLED=true  (project variable; the YAML default is "false")
+#   AI_REVIEW_GITLAB_TOKEN  project access token, role Reporter, scope `api` (masked, protected=no)
+#   AI_REVIEW_API_BASE      OpenAI-compatible base URL (e.g. a LiteLLM proxy) — no default
+#   AI_REVIEW_MODEL         model id served by that endpoint (sent as openai/<model>)
+#   AI_REVIEW_API_KEY       optional key for the endpoint (masked)
+# EXPOSURE: MR pipelines run the MR's own .gitlab-ci.yml and tools/ci/scripts/ai-review.sh, and the
+# variables cannot be protected (MR source branches are not protected). Anyone who can push a
+# branch to THIS project and open an MR can therefore read AI_REVIEW_GITLAB_TOKEN and
+# AI_REVIEW_API_KEY (masking only hides them from the log). The `api`-scoped Reporter token can read
+# the whole project through the API (code, issues, MRs, pipelines), not only post comments; the
+# API key can spend on the endpoint. Enable only where every developer with push access may hold
+# both; use a dedicated, spend-limited key and a short-lived token. MRs from forks never run this
+# job (their code would otherwise receive both values when a pipeline runs in this project).
+review:ai:
+  stage: review
+  image:
+    name: $IMG_PR_AGENT
+    entrypoint: ['']
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "merge_request_event"
+      when: never
+    - if: $CI_MERGE_REQUEST_SOURCE_PROJECT_ID != $CI_PROJECT_ID
+      when: never
+    - if: $AI_REVIEW_ENABLED == "true" && $AI_REVIEW_GITLAB_TOKEN && $AI_REVIEW_API_BASE && $AI_REVIEW_MODEL
+  allow_failure: true
+  timeout: 15 minutes
+  variables:
+    GIT_DEPTH: '1'
+    CONFIG__GIT_PROVIDER: gitlab
+    GITLAB__URL: $CI_SERVER_URL
+    GITLAB__AUTH_TYPE: private_token
+    CONFIG__PUBLISH_OUTPUT_PROGRESS: 'false'
+    CONFIG__USE_GLOBAL_SETTINGS_FILE: 'false'
+    CONFIG__CUSTOM_MODEL_MAX_TOKENS: '128000'
+    CONFIG__MAX_MODEL_TOKENS: '64000'
+    # PR-Agent only posts one comment: no labels, no description rewrites. The token itself can do
+    # more (see EXPOSURE above).
+    PR_REVIEWER__ENABLE_REVIEW_LABELS_SECURITY: 'false'
+    PR_REVIEWER__ENABLE_REVIEW_LABELS_EFFORT: 'false'
+    PR_REVIEWER__REQUIRE_TICKET_ANALYSIS_REVIEW: 'false'
+  script:
+    - sh tools/ci/scripts/ai-review.sh
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/review/]
+
+# Opted in (AI_REVIEW_ENABLED=true) but incomplete: names the missing variables (names only) and
+# ends as an allowed warning (exit 78). Absent when AI review is not enabled.
+review:ai-status:
+  extends: [.status-report]
+  stage: review
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "merge_request_event"
+      when: never
+    - if: $AI_REVIEW_ENABLED != "true"
+      when: never
+    - if: $AI_REVIEW_GITLAB_TOKEN && $AI_REVIEW_API_BASE && $AI_REVIEW_MODEL
+      when: never
+    - when: on_success
+  script:
+    - node tools/ci/src/cli.ts status ai-review --out reports/status
+
+# Blocking manual approval at the end of MR pipelines. With "Pipelines must
+# succeed" enabled, the MR cannot merge until a human other than the commit
+# author plays this job (an audit record; on GitLab CE it is NOT a tamper-proof gate — see docs/security.md §8). GitLab Premium users should prefer
+# protected environments / approval rules; this works on CE.
+approval:human:
+  stage: approval
+  image: $IMG_NODE
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $REQUIRE_HUMAN_APPROVAL == "true"
+      when: manual
+      allow_failure: false
+  interruptible: false
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - |
+      # Logs show user names and ids only: job logs of public projects are world-readable, so no
+      # e-mail address is printed (the comparison below stays in memory).
+      echo "Approved by: ${GITLAB_USER_LOGIN} (user id ${GITLAB_USER_ID})"
+      echo "Commit author: ${CI_COMMIT_AUTHOR%% <*}"
+      case "$CI_COMMIT_AUTHOR" in
+        *"<${GITLAB_USER_EMAIL}>"*)
+          echo "Approval record rejected: the approver authored the head commit. Ask another maintainer." >&2
+          exit 1 ;;
+      esac
+      echo "Human approval recorded for MR !${CI_MERGE_REQUEST_IID} at ${CI_COMMIT_SHA}."

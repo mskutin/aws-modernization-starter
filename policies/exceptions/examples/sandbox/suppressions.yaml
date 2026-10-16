@@ -1,0 +1,389 @@
+# EXAMPLE suppression register for the live-validation sandbox — schema: see ../../suppressions.yaml
+#
+# NOT LOADED BY ANYTHING. This file is an EXAMPLE for the opt-in live-validation `Sandbox` stage
+# (`-c envs=sandbox`, an ordinary, dedicated AWS account; not a governed environment). Its entries
+# relax baseline controls for cost and teardown reasons and nobody in your project has approved
+# them: they are `status: example`, carry no dates and never apply (a loaded example is an
+# EXAMPLE_NOT_ADOPTED error). Until you adopt them, synthesizing the sandbox fails; the default CI
+# pipeline (dev/staging/prod/integration) is unaffected.
+#
+# To use the sandbox in YOUR account: review every entry against your account and risk
+# appetite; copy the ones you accept into policies/exceptions/suppressions.yaml; remove
+# `status: example`; set createdAt/reviewedAt/reviewBy (review at most 180 days ahead),
+# owner and your ticket, in a reviewed MR (policies/ is a gate path). If your CI records
+# approvals outside the repository (STARTER_EXCEPTION_APPROVALS), record the adopted entries'
+# digests there (`starter-policies approval-digests`). Keep the window short: the sandbox is torn
+# down after each run, and an expired entry fails the policy gate. See docs/policy-as-code.md.
+#
+# PROPOSED BASELINE — not an approved control set of any organization or regulator.
+schemaVersion: 1
+# Each entry is either the sandbox twin of a governed entry (same finding, justification restated
+# for the sandbox) or a sandbox-only deviation; none applies to dev/staging/prod or to the
+# integration mini-stack.
+suppressions:
+  - id: SUP-0400
+    status: example
+    ruleId: AwsSolutions-ECS2
+    construct: ApiService
+    resources: [TaskDefinition/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0001 — the API container receives only non-secret
+      configuration as environment variables (the sandbox test issuer URL included); no database
+      credential is in the task definition (IAM database authentication).
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0401
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: ApiService
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [sandbox]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0002 — ecr:GetAuthorizationToken has no
+      resource-level permissions; image pull, log and KMS actions stay scoped.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0402
+    status: example
+    ruleId: AwsSolutions-ELB2
+    construct: ApiService
+    resources: [Alb/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no ALB access logs. The ephemeral sandbox has no access-log
+      bucket so that nothing (late log deliveries included) survives cdk destroy; requests are
+      observable through the API's own logs and CloudWatch metrics for the short run.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0403
+    status: example
+    ruleId: AwsSolutions-ECS2
+    construct: DatabaseMigrationTask
+    resources: [TaskDefinition/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0003 — non-secret configuration only; the migrator
+      authenticates with RDS IAM tokens signed in-process.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0404
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: DatabaseMigrationTask
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [sandbox]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0004 — ecr:GetAuthorizationToken has no
+      resource-level permissions; image pull is scoped to the repository.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0405
+    status: example
+    ruleId: AwsSolutions-ECS2
+    construct: DatabaseBootstrapTask
+    resources: [TaskDefinition/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0200 — only the master secret's ARN is in the
+      environment; the task role reads the value from Secrets Manager when the connection opens.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0406
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: DatabaseBootstrapTask
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [sandbox]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0201 — ecr:GetAuthorizationToken has no
+      resource-level permissions; image pull is scoped to the repository.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0407
+    status: example
+    ruleId: AwsSolutions-ECS2
+    construct: DatabaseRetentionTask
+    resources: [TaskDefinition/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0202 — non-secret configuration only; the retention
+      job (disabled) authenticates with RDS IAM tokens.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0408
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: DatabaseRetentionTask
+    resources: [TaskDefinition/ExecutionRole/DefaultPolicy/Resource]
+    environments: [sandbox]
+    allowedActions: [ecr:GetAuthorizationToken]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0203 — ecr:GetAuthorizationToken has no
+      resource-level permissions; image pull is scoped to the repository.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0409
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: ProcessingWorkflow
+    resources: [StateMachine/Resource/Role/DefaultPolicy/Resource]
+    environments: [sandbox]
+    allowedActions:
+      - logs:CreateLogDelivery
+      - logs:DeleteLogDelivery
+      - logs:DescribeLogGroups
+      - logs:DescribeResourcePolicies
+      - logs:GetLogDelivery
+      - logs:ListLogDeliveries
+      - logs:PutResourcePolicy
+      - logs:UpdateLogDelivery
+      - xray:GetSamplingRules
+      - xray:GetSamplingTargets
+      - xray:PutTelemetryRecords
+      - xray:PutTraceSegments
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0005 — Step Functions log delivery and X-Ray use
+      account-level APIs without resource-level permissions; the workflow is unchanged in the
+      sandbox.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0410
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: ProcessingWorkflow
+    resources:
+      - ValidatorRole/DefaultPolicy/Resource
+      - ProcessorRole/DefaultPolicy/Resource
+    environments: [sandbox]
+    allowedActions:
+      - ec2:AssignPrivateIpAddresses
+      - ec2:CreateNetworkInterface
+      - ec2:DeleteNetworkInterface
+      - ec2:DescribeNetworkInterfaces
+      - ec2:DescribeSubnets
+      - ec2:UnassignPrivateIpAddresses
+      - xray:PutTelemetryRecords
+      - xray:PutTraceSegments
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0006 — X-Ray upload and the Lambda VPC ENI actions
+      have no resource-level permissions; data access stays scoped.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0411
+    status: example
+    ruleId: AwsSolutions-RDS11
+    construct: RelationalDatabase
+    resources: [Instance/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0008 — default PostgreSQL port; the instance is in
+      isolated subnets, not publicly accessible, and admits 5432 only from named security groups.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0412
+    status: example
+    ruleId: AwsSolutions-RDS3
+    construct: RelationalDatabase
+    resources: [Instance/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): single-AZ db.t4g.micro for a short functional run within a
+      USD 25 budget; availability is not under test.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0413
+    status: example
+    ruleId: AwsSolutions-RDS10
+    construct: RelationalDatabase
+    resources: [Instance/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no deletion protection, no final snapshot and automated backups
+      deleted — the ephemeral sandbox holds synthetic data only and must leave nothing after cdk
+      destroy.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0414
+    status: example
+    ruleId: AwsSolutions-CFR1
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0012 — no geo restriction; synthetic data only.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0415
+    status: example
+    ruleId: AwsSolutions-CFR2
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no WAF in front of CloudFront (no platform-managed web ACL in an
+      ordinary account; cost). The API applies its own per-task rate limits.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0416
+    status: example
+    ruleId: AwsSolutions-CFR3
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no CloudFront standard logging. The ephemeral sandbox has no
+      access-log bucket, so delayed log deliveries cannot recreate objects after cdk destroy.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0417
+    status: example
+    ruleId: AwsSolutions-CFR4
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): default *.cloudfront.net certificate (no custom domain, no
+      ACM); CloudFront cannot enforce a minimum viewer TLS policy for it.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0418
+    status: example
+    ruleId: AwsSolutions-S1
+    construct: SpaHosting
+    resources: [Bucket/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no S3 server access logs for the SPA bucket; the ephemeral
+      sandbox has no access-log bucket. The bucket is private (OAC) and emptied on delete.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0419
+    status: example
+    ruleId: CloudFormation-Validate::W3010
+    construct: SandboxFoundation
+    resources: [Vpc/*Subnet?/Subnet]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0017 — availability zones are pinned in
+      configuration so synth needs no availability-zones lookup and stays offline.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0420
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::*]
+    construct: JobReconciler
+    resources: [Role/DefaultPolicy/Resource]
+    environments: [sandbox]
+    allowedActions:
+      - ec2:AssignPrivateIpAddresses
+      - ec2:CreateNetworkInterface
+      - ec2:DeleteNetworkInterface
+      - ec2:DescribeNetworkInterfaces
+      - ec2:DescribeSubnets
+      - ec2:UnassignPrivateIpAddresses
+      - xray:PutTelemetryRecords
+      - xray:PutTraceSegments
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0300 — X-Ray upload and Lambda VPC ENI actions
+      have no resource-level permissions; table and state machine access stay scoped.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0421
+    status: example
+    ruleId: AwsSolutions-IAM5[Resource::arn:<AWS::Partition>:states:<AWS::Region>:<AWS::AccountId>:execution:<ProcessingWorkflowStateMachineBE123F8D.Name>:*]
+    construct: JobReconciler
+    resources: [Role/DefaultPolicy/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): same as SUP-0301 — DescribeExecution on every execution of the
+      one processing state machine of the stage, metadata only.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0422
+    status: example
+    ruleId: AwsSolutions-S1
+    construct: TestIssuerHosting
+    resources: [Bucket/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): the test-issuer bucket holds two public documents (OIDC
+      discovery, public JWKS); no access-log bucket in the ephemeral sandbox. Private, OAC only,
+      emptied on delete.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0423
+    status: example
+    ruleId: AwsSolutions-CFR1
+    construct: TestIssuerHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): the test issuer serves public OIDC metadata; no geo
+      restriction.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0424
+    status: example
+    ruleId: AwsSolutions-CFR2
+    construct: TestIssuerHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no WAF for the test issuer; it serves two static public
+      documents, caching disabled, GET/HEAD only.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0425
+    status: example
+    ruleId: AwsSolutions-CFR3
+    construct: TestIssuerHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): no CloudFront standard logging for the test issuer; no
+      access-log bucket in the ephemeral sandbox.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0426
+    status: example
+    ruleId: AwsSolutions-CFR4
+    construct: TestIssuerHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): the test issuer uses the default *.cloudfront.net certificate
+      (no custom domain); viewers are HTTPS-only.
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0427
+    status: example
+    ruleId: AwsSolutions-CFR5
+    construct: SpaHosting
+    resources: [Distribution/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): CloudFront reaches the API over HTTP (no ACM certificate or
+      custom domain in the sandbox). The internet-facing ALB admits only the CloudFront
+      origin-facing prefix list and forwards only requests carrying the per-run X-Origin-Verify
+      secret (default action 403); the viewer leg stays HTTPS-only.
+    compensatingControls:
+      - infra/test/sandbox-stage.test.ts (prefix-list-only ingress, 403 default, header rule)
+    owner: platform-team
+    ticket: sandbox-profile
+  - id: SUP-0428
+    status: example
+    ruleId: AwsSolutions-SMG4
+    construct: RelationalDatabase
+    resources: [Instance/Secret/Resource]
+    environments: [sandbox]
+    justification: >-
+      SANDBOX (live validation, not a governed environment): fallback only (context sandbox.masterSecretRotation=off, default
+      on) if the hosted-rotation transform cannot deploy in the sandbox account. The master secret
+      is used only by the one-off bootstrap task for a run of hours and is deleted with the stack;
+      every runtime identity uses IAM database authentication.
+    owner: platform-team
+    ticket: sandbox-profile

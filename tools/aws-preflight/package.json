@@ -1,0 +1,28 @@
+{
+  "name": "@starter/tool-aws-preflight",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Read-only AWS sandbox preflight discovery: identity gate, one static allowlist of Get/List/Describe AWS CLI v2 calls, sanitized committable evidence; plus the personal-sandbox account guard (dist/guard-cli.js, scripts/sandbox-guard.sh) that verifies the account with one sts get-caller-identity before each mutating command other scripts run. No mutation capability, no AWS SDK.",
+  "bin": {
+    "starter-aws-preflight": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/build-info.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "plan": "node src/cli.ts plan",
+    "generate": "node src/cli.ts plan --write",
+    "guard": "node dist/guard-cli.js"
+  },
+  "dependencies": {
+    "prettier": "3.9.10"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

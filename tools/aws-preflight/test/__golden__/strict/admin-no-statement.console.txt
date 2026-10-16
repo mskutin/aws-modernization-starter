@@ -1,0 +1,11 @@
+exit 5
+--- stdout
+starter-aws-preflight discover — run 20261014T053000Z-a1b2c3
+  profile starter-sandbox-developer (IAM Identity Center; keys output, region, sso_account_id, sso_role_name, sso_session), expected account ********3333, workload region ap-southeast-1 (global endpoints: us-east-1)
+  AWS CLI 2.35.11 at <box>/bin/aws (sha256 0a5fb2d3a9e42d8cd0cd06a68ffdbc8cdd3e26ad2ec801c47867e457e7433e1a)
+  tool 0.1.0, commit <commit>, sources sha256 <source-sha256>, <clean-or-dirty>
+  raw output (private, never commit): <box>/raw/20261014T053000Z-a1b2c3
+identity gate
+  [1/3] caller: account ********3333 (expected), assumed role AWSReservedSSO_AccountDiscovery_0123456789abcdef (matches the pattern)
+--- stderr
+STOP — administrator-equivalent identity: inline policy AwsSSOInlinePolicy is administrator-equivalent. No override.

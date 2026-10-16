@@ -1,0 +1,57 @@
+#
+# Proposed policy baseline - Amazon DynamoDB
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata: policies/src/rules/dynamodb.ts
+#
+
+let starter_ddb_tables = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
+let starter_ddb_global_tables = Resources.*[ Type == 'AWS::DynamoDB::GlobalTable' ]
+let starter_ddb_prod_tables = Resources.*[
+  Type == 'AWS::DynamoDB::Table'
+  Properties.Tags[ Key == 'Environment' ].Value == 'prod'
+]
+let starter_ddb_prod_global_tables = Resources.*[
+  Type == 'AWS::DynamoDB::GlobalTable'
+  some Properties.Replicas[*].Tags[ Key == 'Environment' ].Value == 'prod'
+]
+
+rule BASE_DDB_001 {
+  when %starter_ddb_tables !empty {
+    %starter_ddb_tables.Properties.SSESpecification.SSEEnabled == true
+    <<BASE-DDB-001: DynamoDB tables are encrypted with a customer-managed KMS key (SSEEnabled)>>
+    %starter_ddb_tables.Properties.SSESpecification.SSEType == 'KMS'
+    <<BASE-DDB-001: DynamoDB tables are encrypted with a customer-managed KMS key (SSEType KMS)>>
+    %starter_ddb_tables.Properties.SSESpecification.KMSMasterKeyId exists
+    <<BASE-DDB-001: DynamoDB tables are encrypted with a customer-managed KMS key (KMSMasterKeyId)>>
+  }
+  when %starter_ddb_global_tables !empty {
+    %starter_ddb_global_tables.Properties.SSESpecification.SSEEnabled == true
+    <<BASE-DDB-001: DynamoDB tables are encrypted with a customer-managed KMS key (SSEEnabled)>>
+    %starter_ddb_global_tables.Properties.SSESpecification.SSEType == 'KMS'
+    <<BASE-DDB-001: DynamoDB tables are encrypted with a customer-managed KMS key (SSEType KMS)>>
+    %starter_ddb_global_tables.Properties.Replicas[*].SSESpecification.KMSMasterKeyId exists
+    <<BASE-DDB-001: DynamoDB tables are encrypted with a customer-managed KMS key (replica KMSMasterKeyId)>>
+  }
+}
+
+rule BASE_DDB_002 {
+  when %starter_ddb_tables !empty {
+    %starter_ddb_tables.Properties.PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled == true
+    <<BASE-DDB-002: DynamoDB point-in-time recovery is enabled>>
+  }
+  when %starter_ddb_global_tables !empty {
+    %starter_ddb_global_tables.Properties.Replicas[*].PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled == true
+    <<BASE-DDB-002: DynamoDB point-in-time recovery is enabled (replica)>>
+  }
+}
+
+rule BASE_DDB_003 {
+  when %starter_ddb_prod_tables !empty {
+    %starter_ddb_prod_tables.Properties.DeletionProtectionEnabled == true
+    <<BASE-DDB-003: DynamoDB deletion protection in prod>>
+  }
+  when %starter_ddb_prod_global_tables !empty {
+    %starter_ddb_prod_global_tables.Properties.Replicas[*].DeletionProtectionEnabled == true
+    <<BASE-DDB-003: DynamoDB deletion protection in prod (replica)>>
+  }
+}

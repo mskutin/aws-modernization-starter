@@ -1,0 +1,50 @@
+{
+  "name": "@starter/infra",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "AWS CDK v2 infrastructure for the AWS modernization starter: constructs, stacks, stages, environment configs and the integration mini-stack.",
+  "exports": {
+    "./emulator-guard": {
+      "types": "./dist/lib/emulator-guard.d.ts",
+      "default": "./dist/lib/emulator-guard.js"
+    },
+    "./region": {
+      "types": "./dist/lib/region.d.ts",
+      "default": "./dist/lib/region.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b",
+    "test": "tsc -b && vitest run",
+    "test:unit": "tsc -b && vitest run",
+    "synth": "tsc -b && cdk synth \"**\" --quiet",
+    "synth:integration": "tsc -b && cdk synth --app \"node dist/bin/integration.js\" --output cdk.out/integration --quiet",
+    "clean": "rm -rf dist cdk.out"
+  },
+  "dependencies": {
+    "@starter/db": "workspace:*",
+    "@starter/documents": "workspace:*",
+    "@starter/policies": "workspace:*",
+    "@starter/workflow-processing": "workspace:*",
+    "aws-cdk-lib": "2.272.0",
+    "cdk-nag": "3.0.2",
+    "constructs": "10.8.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@starter/config": "workspace:*",
+    "@starter/domain": "workspace:*",
+    "@starter/fn-processor": "workspace:*",
+    "@starter/fn-reconciler": "workspace:*",
+    "@starter/fn-validator": "workspace:*",
+    "@types/node": "24.19.2",
+    "aws-cdk": "2.1144.0",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3",
+    "yaml": "2.9.1"
+  }
+}

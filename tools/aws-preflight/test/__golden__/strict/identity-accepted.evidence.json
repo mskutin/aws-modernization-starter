@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 4,
+  "kind": "starter-aws-preflight-evidence",
+  "command": "identity",
+  "complete": true,
+  "gate": {
+    "organization": "member",
+    "readOnlyAssessment": "write-capable-accepted",
+    "computedLevel": "write-capable",
+    "roleKind": "iam-identity-center-permission-set",
+    "principalRecheck": "not-run"
+  },
+  "tool": {
+    "name": "@starter/tool-aws-preflight",
+    "version": "0.1.0",
+    "gitCommit": "<commit>",
+    "sourceSha256": "<source-sha256>",
+    "gitDirty": "<clean-or-dirty>"
+  },
+  "run": {
+    "id": "20261014T053000Z-a1b2c3",
+    "startedAt": "2026-10-14T05:30:00.000Z",
+    "finishedAt": "2026-10-14T05:30:00.000Z"
+  },
+  "awsCli": {
+    "version": "2.35.11",
+    "verifiedAgainst": "2.35.11",
+    "path": "<box>/bin/aws",
+    "realpath": "<box>/bin/aws",
+    "sha256": "0a5fb2d3a9e42d8cd0cd06a68ffdbc8cdd3e26ad2ec801c47867e457e7433e1a"
+  },
+  "regions": {
+    "workload": "ap-southeast-1",
+    "global": "us-east-1"
+  },
+  "childEnvironment": {
+    "passedThroughNames": ["HOME", "LANG", "PATH"],
+    "fixed": {
+      "AWS_PAGER": "",
+      "AWS_CLI_AUTO_PROMPT": "off",
+      "AWS_RETRY_MODE": "standard",
+      "AWS_MAX_ATTEMPTS": "3",
+      "AWS_EC2_METADATA_DISABLED": "true",
+      "AWS_CLI_ERROR_FORMAT": "legacy",
+      "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "true",
+      "PYTHONNOUSERSITE": "1"
+    }
+  },
+  "inputs": {
+    "qualifiers": ["starter", "hnb659fds"],
+    "vpcFilter": null,
+    "kmsKeyRefs": [],
+    "boundaryPolicyArn": null,
+    "dbEngineVersion": "17.9",
+    "callTimeoutSeconds": 150,
+    "attestationGiven": false,
+    "acceptanceGiven": true,
+    "awsConfig": {
+      "profileKeys": ["output", "region", "sso_account_id", "sso_role_name", "sso_session"],
+      "ssoSessionKeys": ["sso_region", "sso_registration_scopes", "sso_start_url"]
+    }
+  },
+  "notes": [
+    "The tool issued only the allowlisted get-/list-/describe- AWS CLI calls recorded below (plus a local `aws --version`). Before starting the AWS CLI it refused any configuration in $HOME/.aws that could replace, extend or redirect a call (README \"Trust assumptions\"); it cannot observe what the CLI or the environment did beyond that.",
+    "gate.readOnlyAssessment: verified-read-only = only metadata-only AWS managed policies and policies that allow nothing but the allowlisted actions; attested = a human statement, not a verification; write-capable-accepted = a human accepted a write-capable identity for this run, so the read-only guarantee rests on the tool alone.",
+    "gate.organization: unknown means DescribeOrganization was denied; membership (and \"not the management account\") is then NOT evidenced.",
+    "access-denied means UNKNOWN visibility for this identity, not absence of the resource.",
+    "Sanitized output: see tools/aws-preflight/README.md (Sanitization). Raw responses stay in the operator-private raw directory."
+  ],
+  "identity": {
+    "account": "********3333",
+    "principalType": "assumed-role",
+    "role": "AccountDiscovery",
+    "roleKind": "iam-identity-center-permission-set",
+    "sessionName": "<masked>",
+    "readOnlyAssessment": "write-capable-accepted",
+    "computedLevel": "write-capable",
+    "policies": [
+      {
+        "kind": "aws-managed",
+        "name": "PowerUserAccess",
+        "arn": "arn:aws:iam::aws:policy/PowerUserAccess",
+        "category": "write-capable"
+      },
+      {
+        "kind": "inline",
+        "name": "AwsSSOInlinePolicy",
+        "category": "allowlisted-only",
+        "documentSha256": "e28c9c6fa84f946261fb07da2443f2eb4c41ffa865cc810eade681356c34786a",
+        "allowStatements": 4,
+        "denyStatements": 0,
+        "nonAllowlistedActions": []
+      }
+    ],
+    "permissionsBoundary": null,
+    "reasons": {
+      "writeCapable": ["AWS managed policy PowerUserAccess"],
+      "dataCapable": [],
+      "unverified": []
+    },
+    "acceptance": "Developer permission set accepted for this discovery run by J. Tan (account owner), 2026-10-14, dedicated sandbox",
+    "note": "verified-read-only: only metadata-only AWS managed policies and inline/customer policies that allow nothing but the allowlisted actions. attested: an operator statement recorded verbatim, NOT a verification. write-capable-accepted: a human accepted a write-capable identity for this run; the read-only guarantee then rests on the tool alone (allowlist, exec boundary, configuration refusals).",
+    "organization": {
+      "status": "member",
+      "organizationId": "<org-1>",
+      "managementAccount": "<other-account-1>",
+      "featureSet": "ALL"
+    }
+  },
+  "summary": {
+    "calls": 6,
+    "byStatus": {
+      "ok": 6,
+      "access-denied": 0,
+      "not-found": 0,
+      "error": 0,
+      "timeout": 0,
+      "skipped": 0
+    },
+    "byArea": {
+      "org-iam": {
+        "ok": 0,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      },
+      "network-edge": {
+        "ok": 0,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      },
+      "quotas-services": {
+        "ok": 0,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      },
+      "finops": {
+        "ok": 0,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      },
+      "identity": {
+        "ok": 6,
+        "access-denied": 0,
+        "not-found": 0,
+        "error": 0,
+        "timeout": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "probes": [
+    {
+      "id": "identity.caller@ap-southeast-1",
+      "probe": "identity.caller",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "sts:GetCallerIdentity",
+      "command": "aws sts get-caller-identity --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Account": "<sandbox-account>"
+      }
+    },
+    {
+      "id": "identity.role@ap-southeast-1",
+      "probe": "identity.role",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRole",
+      "command": "aws iam get-role --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Role": {
+          "Path": "/aws-reserved/sso.amazonaws.com/ap-southeast-1/",
+          "RoleName": "AWSReservedSSO_AccountDiscovery_0123456789abcdef",
+          "RoleId": "<iam-unique-id-1>",
+          "Arn": "arn:aws:iam::<sandbox-account>:role/AWSReservedSSO_AccountDiscovery_0123456789abcdef",
+          "CreateDate": "2026-01-02T03:04:05+00:00",
+          "MaxSessionDuration": 3600,
+          "trustPolicySummary": {
+            "statementCount": 1,
+            "effects": ["Allow"],
+            "actions": ["sts:AssumeRole", "sts:TagSession"],
+            "principalTypes": {
+              "AWS": 2
+            },
+            "awsPrincipals": {
+              "sameAccount": 1,
+              "otherAccount": 1
+            },
+            "conditionKeys": ["sts:ExternalId"]
+          },
+          "Tags": {
+            "keys": ["Name", "owner"],
+            "name": "<name-1>"
+          }
+        }
+      }
+    },
+    {
+      "id": "identity.role-managed-policies@ap-southeast-1",
+      "probe": "identity.role-managed-policies",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:ListAttachedRolePolicies",
+      "command": "aws iam list-attached-role-policies --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "AttachedPolicies": [
+          {
+            "PolicyName": "PowerUserAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/PowerUserAccess"
+          }
+        ]
+      }
+    },
+    {
+      "id": "identity.role-inline-policies@ap-southeast-1",
+      "probe": "identity.role-inline-policies",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:ListRolePolicies",
+      "command": "aws iam list-role-policies --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --max-items 100 --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "PolicyNames": ["AwsSSOInlinePolicy"]
+      }
+    },
+    {
+      "id": "identity.role-inline-policy#1@ap-southeast-1",
+      "probe": "identity.role-inline-policy",
+      "area": "identity",
+      "phase": "identity",
+      "region": "ap-southeast-1",
+      "iamAction": "iam:GetRolePolicy",
+      "command": "aws iam get-role-policy --role-name=AWSReservedSSO_AccountDiscovery_0123456789abcdef --policy-name=AwsSSOInlinePolicy --profile <profile> --region ap-southeast-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "RoleName": "AWSReservedSSO_AccountDiscovery_0123456789abcdef",
+        "PolicyName": "AwsSSOInlinePolicy"
+      }
+    },
+    {
+      "id": "identity.organization@us-east-1",
+      "probe": "identity.organization",
+      "area": "identity",
+      "phase": "identity",
+      "region": "us-east-1",
+      "iamAction": "organizations:DescribeOrganization",
+      "command": "aws organizations describe-organization --profile <profile> --region us-east-1 --output json --no-cli-pager --cli-connect-timeout 10 --cli-read-timeout 30",
+      "status": "ok",
+      "truncated": false,
+      "attempts": 1,
+      "data": {
+        "Organization": {
+          "Id": "<org-1>",
+          "Arn": "arn:aws:organizations::<other-account-1>:organization/<org-1>",
+          "FeatureSet": "ALL",
+          "MasterAccountArn": "arn:aws:organizations::<other-account-1>:account/<org-1>/<other-account-1>",
+          "MasterAccountId": "<other-account-1>",
+          "AvailablePolicyTypes": [
+            {
+              "Type": "SERVICE_CONTROL_POLICY",
+              "Status": "ENABLED"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

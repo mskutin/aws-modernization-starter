@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+cdk.out/
+infra/cdk.out*/
+coverage/
+reports/
+playwright-report/
+test-results/
+blob-report/
+
+# local env & secrets (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!policies/**/fixtures/**/*.key
+secrets/
+.secrets/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+
+# local tooling
+.gate/
+.cache/
+.worktrees/
+oci-out/
+*.oci.tar

@@ -1,0 +1,37 @@
+# License policy for `licenses` (tools/ci/src/licenses.ts).
+#
+# A package passes when its declared SPDX expression is satisfiable using only
+# `allowed` licenses (OR = any branch, AND = all branches). Anything else fails,
+# including missing/UNKNOWN/UNLICENSED declarations, unless a package-specific
+# exception (reason, approver, expiry <= 90 days — enforced by supply-chain:lint)
+# covers it. `denied` only sharpens the error message.
+version: 1
+allowed:
+  - MIT
+  - MIT-0
+  - ISC
+  - 0BSD
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - Apache-2.0
+  - BlueOak-1.0.0
+  - CC0-1.0
+  - Unlicense
+  - Zlib
+  - Python-2.0
+  # Data/documentation licenses (e.g. caniuse-lite browser data).
+  - CC-BY-3.0
+  - CC-BY-4.0
+  # Weak, file-level copyleft: acceptable for unmodified dependencies. Modifying
+  # MPL-licensed files requires publishing those files — review before patching.
+  - MPL-2.0
+denied:
+  - GPL
+  - AGPL
+  - LGPL
+  - SSPL
+  - BUSL
+  - Elastic-2.0
+  - CC-BY-NC
+  - Commons-Clause
+exceptions: []

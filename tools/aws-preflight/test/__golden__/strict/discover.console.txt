@@ -1,0 +1,100 @@
+exit 0
+--- stdout
+starter-aws-preflight discover — run 20261014T053000Z-a1b2c3
+  profile starter-sandbox-developer (IAM Identity Center; keys output, region, sso_account_id, sso_role_name, sso_session), expected account ********3333, workload region ap-southeast-1 (global endpoints: us-east-1)
+  AWS CLI 2.35.11 at <box>/bin/aws (sha256 0a5fb2d3a9e42d8cd0cd06a68ffdbc8cdd3e26ad2ec801c47867e457e7433e1a)
+  tool 0.1.0, commit <commit>, sources sha256 <source-sha256>, <clean-or-dirty>
+  raw output (private, never commit): <box>/raw/20261014T053000Z-a1b2c3
+identity gate
+  [1/3] caller: account ********3333 (expected), assumed role AWSReservedSSO_AccountDiscovery_0123456789abcdef (matches the pattern)
+  [2/3] own role: computed level verified-read-only; recorded as verified-read-only
+  [3/3] organization: member (management account <other-account-1>)
+  gate: organization MEMBER, read-only assessment verified-read-only (computed verified-read-only)
+discovery (strictly sequential)
+  access-denied  a.org.parents@us-east-1 (AccessDeniedException)
+  access-denied  a.org.scps@us-east-1 (AccessDeniedException)
+  access-denied  a.org.rcps@us-east-1 (AccessDeniedException)
+  ok             a.org.effective-tag-policy@us-east-1
+  ok             a.org.effective-ec2-declarative-policy@us-east-1
+  ok             a.iam.account-summary@ap-southeast-1
+  ok             a.iam.account-aliases@ap-southeast-1
+  ok             a.iam.boundary-policies@ap-southeast-1
+  skipped        a.iam.boundary-policy@ap-southeast-1 — not requested (no --boundary-policy-arn)
+  ok             a.cdk.deploy-role[starter]@ap-southeast-1
+  ok             a.cdk.deploy-role[hnb659fds]@ap-southeast-1
+  ok             a.cdk.file-publishing-role[starter]@ap-southeast-1
+  ok             a.cdk.file-publishing-role[hnb659fds]@ap-southeast-1
+  ok             a.cdk.image-publishing-role[starter]@ap-southeast-1
+  ok             a.cdk.image-publishing-role[hnb659fds]@ap-southeast-1
+  ok             a.cdk.lookup-role[starter]@ap-southeast-1
+  ok             a.cdk.lookup-role[hnb659fds]@ap-southeast-1
+  ok             a.cdk.cfn-exec-role[starter]@ap-southeast-1
+  ok             a.cdk.cfn-exec-role[hnb659fds]@ap-southeast-1
+  ok             a.cfn.cdk-toolkit-stack@ap-southeast-1
+  not-found      a.cfn.cdk-toolkit-stack@us-east-1 (ValidationError)
+  ok             a.cfn.stacks@ap-southeast-1
+  ok             a.cfn.stacks@us-east-1
+  ok             a.cfn.hook-types-public@ap-southeast-1
+  ok             a.cfn.hook-types-private@ap-southeast-1
+  not-found      a.cdk.bootstrap-version[starter]@ap-southeast-1 (ParameterNotFound)
+  not-found      a.cdk.bootstrap-version[starter]@us-east-1 (ParameterNotFound)
+  ok             a.cdk.bootstrap-version[hnb659fds]@ap-southeast-1
+  ok             a.cdk.bootstrap-version[hnb659fds]@us-east-1
+  ok             b.ec2.availability-zones@ap-southeast-1
+  ok             b.ec2.account-attributes@ap-southeast-1
+  ok             b.ec2.vpcs@ap-southeast-1
+  ok             b.ec2.subnets@ap-southeast-1
+  ok             b.ec2.route-tables@ap-southeast-1
+  ok             b.ec2.internet-gateways@ap-southeast-1
+  ok             b.ec2.nat-gateways@ap-southeast-1
+  ok             b.ec2.vpc-endpoints@ap-southeast-1
+  ok             b.ec2.cloudfront-prefix-list@ap-southeast-1
+  ok             b.ec2.vpc-bpa-options@ap-southeast-1
+  ok             b.ec2.vpc-bpa-exclusions@ap-southeast-1
+  ok             b.elbv2.account-limits@ap-southeast-1
+  ok             b.route53.hosted-zones@ap-southeast-1
+  ok             b.acm.certificates@ap-southeast-1
+  ok             b.acm.certificates@us-east-1
+  ok             b.wafv2.web-acls-regional@ap-southeast-1
+  ok             b.wafv2.web-acls-cloudfront@us-east-1
+  ok             c.lambda.account-settings@ap-southeast-1
+  ok             c.quotas.lambda@ap-southeast-1
+  ok             c.quotas.fargate@ap-southeast-1
+  ok             c.quotas.ecs@ap-southeast-1
+  ok             c.quotas.vpc@ap-southeast-1
+  ok             c.quotas.elasticloadbalancing@ap-southeast-1
+  ok             c.quotas.states@ap-southeast-1
+  ok             c.quotas.dynamodb@ap-southeast-1
+  ok             c.quotas.kms@ap-southeast-1
+  ok             c.quotas.ecr@ap-southeast-1
+  ok             c.quotas.logs@ap-southeast-1
+  ok             c.quotas.cloudformation@ap-southeast-1
+  ok             c.quotas.rds@ap-southeast-1
+  ok             c.quotas.cloudfront@us-east-1
+  ok             c.quotas.ec2-elastic-ips@ap-southeast-1
+  ok             c.quotas.lambda-concurrency-default@ap-southeast-1
+  ok             c.quotas.lambda-concurrency-requests@ap-southeast-1
+  ok             c.rds.engine-version@ap-southeast-1
+  ok             c.rds.engine-catalog@ap-southeast-1
+  ok             c.rds.orderable.db-t4g-micro@ap-southeast-1
+  ok             c.rds.orderable.db-t4g-small@ap-southeast-1
+  ok             c.rds.certificates@ap-southeast-1
+  ok             c.rds.account-attributes@ap-southeast-1
+  ok             c.ecs.account-settings@ap-southeast-1
+  ok             c.ecr.registry@ap-southeast-1
+  ok             c.ecr.scanning@ap-southeast-1
+  ok             c.dynamodb.limits@ap-southeast-1
+  ok             c.cfn.account-limits@ap-southeast-1
+  ok             c.kms.aliases@ap-southeast-1
+  skipped        c.kms.key@ap-southeast-1 — not requested (no --kms-key)
+  ok             c.logs.subscription-filter-policies@ap-southeast-1
+  ok             c.logs.data-protection-policies@ap-southeast-1
+  ok             c.logs.resource-policies@ap-southeast-1
+  ok             d.budgets.budgets@us-east-1
+  note: 1 budget name(s) failed validation and are not queried
+  ok             d.budgets.notifications#1@us-east-1
+summary: 88 records — ok 80, access-denied 3, not-found 3, error 0, timeout 0, skipped 2
+gate: organization member, readOnlyAssessment verified-read-only, computedLevel verified-read-only, principal re-check same-principal
+evidence (sanitized): <box>/evidence/discovery.json
+after the run: aws sso logout (deletes the cached SSO token and role credentials)
+--- stderr

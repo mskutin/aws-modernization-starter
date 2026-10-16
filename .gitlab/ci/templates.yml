@@ -1,0 +1,94 @@
+# Shared job templates. Hidden keys only.
+
+# Repo-wide jobs: every pipeline except task-only schedules (SCHEDULE_TASK=rescan|stale|drift|sweep).
+.rules:always:
+  rules:
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - when: on_success
+
+# Jobs that exist only on protected refs (release chain after the gate, schedule tasks, aws:*).
+# STARTER_PROTECTED_RUNNER_TAG empty (default): the generic runner. Set it to move these jobs onto a
+# dedicated `ref_protected` runner (ADR 0110): the opt-in place for runner-mounted files such as the
+# signing trust anchor or AWS credentials, never the default runner. Fresh clone either way.
+.protected-runner:
+  tags: ['$STARTER_PROTECTED_RUNNER_TAG']
+  interruptible: false
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: '1'
+
+# Release refs only: the protected default branch or a protected tag — never an MR, an unprotected
+# branch or an unprotected tag (a Developer can create unprotected tags).
+.rules:protected-release:
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED != "true"
+      when: never
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - if: $CI_COMMIT_TAG || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Merge-request-only advisory/approval jobs.
+.rules:mr:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# Jobs that `gates:mandatory` requires. On success they leave a dotenv marker
+# GATE_<job id>=<job name>; the gate inherits the markers through `needs` and
+# compares them with the impact report (tools/impact/src/gate.ts).
+# Do not override after_script in gated jobs.
+.gated:
+  after_script:
+    - mkdir -p .gate
+    - |
+      if [ "$CI_JOB_STATUS" = "success" ]; then
+        printf 'GATE_%s=%s\n' "$CI_JOB_ID" "$CI_JOB_NAME" > .gate/marker.env
+        echo "gate marker: $CI_JOB_NAME passed"
+      else
+        echo "gate marker: not written ($CI_JOB_STATUS)"
+      fi
+  artifacts:
+    reports:
+      dotenv: .gate/marker.env
+
+# Node 24 LTS + pnpm (pinned by packageManager / pnpm-lock.yaml, bootstrapped
+# with corepack) + workspace install from the lockfile.
+.node:
+  image: $IMG_NODE
+  variables:
+    # Outside the project dir: repo-wide linters must never see tool caches.
+    COREPACK_HOME: /tmp/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+    PNPM_STORE_DIR: $CI_PROJECT_DIR/.pnpm-store
+    # Small runners (2 GB per job is common): keep V8's heap below it (GC instead of OOM kill).
+    NODE_OPTIONS: --max-old-space-size=1536
+  cache:
+    - key:
+        prefix: pnpm-store-v1
+        files: [pnpm-lock.yaml]
+      paths: [.pnpm-store/]
+      policy: pull
+  before_script:
+    - sh tools/ci/scripts/pnpm-install.sh
+
+# Node image without the workspace install (tools that only need Node builtins).
+.node-bare:
+  image: $IMG_NODE
+  variables:
+    GIT_DEPTH: '1'
+
+# Status reports of optional capabilities (tools/ci/src/status.ts). The check jobs of a capability
+# that is not configured do not exist, so nothing pretends to have run; the status job says so:
+#   exit 0  = reported (incl. "not configured — not executed"),
+#   exit 78 = opted in but incomplete, or a coverage-reducing opt-out (allowed warning),
+#   other   = an opted-in capability is misconfigured where it must run (fails the pipeline).
+.status-report:
+  image: $IMG_NODE
+  variables:
+    GIT_DEPTH: '1'
+  allow_failure:
+    exit_codes: [78]
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [reports/status/]

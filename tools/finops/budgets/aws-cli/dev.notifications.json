@@ -1,0 +1,58 @@
+[
+  {
+    "Notification": {
+      "NotificationType": "ACTUAL",
+      "ComparisonOperator": "GREATER_THAN",
+      "Threshold": 50,
+      "ThresholdType": "PERCENTAGE"
+    },
+    "Subscribers": [
+      {
+        "SubscriptionType": "SNS",
+        "Address": "arn:aws:sns:ap-southeast-1:000000000000:starter-dev-alarms"
+      }
+    ]
+  },
+  {
+    "Notification": {
+      "NotificationType": "ACTUAL",
+      "ComparisonOperator": "GREATER_THAN",
+      "Threshold": 80,
+      "ThresholdType": "PERCENTAGE"
+    },
+    "Subscribers": [
+      {
+        "SubscriptionType": "SNS",
+        "Address": "arn:aws:sns:ap-southeast-1:000000000000:starter-dev-alarms"
+      }
+    ]
+  },
+  {
+    "Notification": {
+      "NotificationType": "ACTUAL",
+      "ComparisonOperator": "GREATER_THAN",
+      "Threshold": 100,
+      "ThresholdType": "PERCENTAGE"
+    },
+    "Subscribers": [
+      {
+        "SubscriptionType": "SNS",
+        "Address": "arn:aws:sns:ap-southeast-1:000000000000:starter-dev-alarms"
+      }
+    ]
+  },
+  {
+    "Notification": {
+      "NotificationType": "FORECASTED",
+      "ComparisonOperator": "GREATER_THAN",
+      "Threshold": 100,
+      "ThresholdType": "PERCENTAGE"
+    },
+    "Subscribers": [
+      {
+        "SubscriptionType": "SNS",
+        "Address": "arn:aws:sns:ap-southeast-1:000000000000:starter-dev-alarms"
+      }
+    ]
+  }
+]

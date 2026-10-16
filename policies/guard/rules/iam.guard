@@ -1,0 +1,338 @@
+#
+# Proposed policy baseline - AWS IAM (identity-based policies)
+# PROPOSED BASELINE ONLY - NOT an approved control set of any organization or regulator.
+# Rule metadata and the documented Resource "*" allowlist: policies/src/rules/iam.ts
+# BASE-IAM-004 (permissions boundary) is cdk-nag only (deployment-specific ARN).
+#
+
+let starter_iam_policies = Resources.*[ Type IN ['AWS::IAM::Policy', 'AWS::IAM::ManagedPolicy'] ]
+let starter_iam_identities = Resources.*[ Type IN ['AWS::IAM::Role', 'AWS::IAM::User', 'AWS::IAM::Group'] ]
+let starter_iam_inline_identities = Resources.*[
+  Type IN ['AWS::IAM::Role', 'AWS::IAM::User', 'AWS::IAM::Group']
+  Properties.Policies exists
+]
+let starter_iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
+let starter_iam_long_lived = Resources.*[ Type IN ['AWS::IAM::User', 'AWS::IAM::AccessKey'] ]
+
+let starter_iam_resource_wildcard_actions = [
+  'xray:PutTraceSegments',
+  'xray:PutTelemetryRecords',
+  'xray:GetSamplingRules',
+  'xray:GetSamplingTargets',
+  'xray:GetSamplingStatisticSummaries',
+  'ecr:GetAuthorizationToken',
+  'logs:CreateLogDelivery',
+  'logs:GetLogDelivery',
+  'logs:UpdateLogDelivery',
+  'logs:DeleteLogDelivery',
+  'logs:ListLogDeliveries',
+  'logs:PutResourcePolicy',
+  'logs:DescribeResourcePolicies',
+  'logs:DescribeLogGroups',
+  'ec2:CreateNetworkInterface',
+  'ec2:DeleteNetworkInterface',
+  'ec2:DescribeNetworkInterfaces',
+  'ec2:DescribeSubnets',
+  'ec2:AssignPrivateIpAddresses',
+  'ec2:UnassignPrivateIpAddresses',
+  'cloudwatch:PutMetricData'
+]
+
+rule BASE_IAM_001 {
+  when %starter_iam_policies !empty {
+    %starter_iam_policies.Properties.PolicyDocument.Statement[ Effect == 'Allow' ] {
+      NotAction !exists
+      <<BASE-IAM-001: No wildcard IAM actions (NotAction in an Allow statement)>>
+      Action[*] != /^(\*|[A-Za-z0-9-]+:\*)$/
+      <<BASE-IAM-001: No wildcard IAM actions ("*" or "<service>:*")>>
+    }
+  }
+  when %starter_iam_inline_identities !empty {
+    %starter_iam_inline_identities.Properties.Policies[*].PolicyDocument.Statement[ Effect == 'Allow' ] {
+      NotAction !exists
+      <<BASE-IAM-001: No wildcard IAM actions (NotAction in an Allow statement)>>
+      Action[*] != /^(\*|[A-Za-z0-9-]+:\*)$/
+      <<BASE-IAM-001: No wildcard IAM actions ("*" or "<service>:*")>>
+    }
+  }
+}
+
+rule BASE_IAM_002 {
+  when %starter_iam_policies !empty {
+    %starter_iam_policies.Properties.PolicyDocument.Statement[ Effect == 'Allow' ] {
+      NotResource !exists
+      <<BASE-IAM-002: NotResource is not allowed in Allow statements>>
+    }
+    %starter_iam_policies.Properties.PolicyDocument.Statement[ Effect == 'Allow' some Resource[*] == '*' ].Action[*] IN %starter_iam_resource_wildcard_actions
+    <<BASE-IAM-002: Resource "*" only for actions without resource-level permissions>>
+  }
+  when %starter_iam_inline_identities !empty {
+    %starter_iam_inline_identities.Properties.Policies[*].PolicyDocument.Statement[ Effect == 'Allow' ] {
+      NotResource !exists
+      <<BASE-IAM-002: NotResource is not allowed in Allow statements>>
+    }
+    %starter_iam_inline_identities.Properties.Policies[*].PolicyDocument.Statement[ Effect == 'Allow' some Resource[*] == '*' ].Action[*] IN %starter_iam_resource_wildcard_actions
+    <<BASE-IAM-002: Resource "*" only for actions without resource-level permissions>>
+  }
+}
+
+rule BASE_IAM_003 {
+  when %starter_iam_identities !empty {
+    %starter_iam_identities[ Properties.ManagedPolicyArns exists ].Properties.ManagedPolicyArns[*] {
+      when this is_string {
+        this != /:policy\/(AdministratorAccess|PowerUserAccess|IAMFullAccess)$/
+        <<BASE-IAM-003: No administrator-equivalent managed policies>>
+      }
+      when this.'Fn::Join' exists {
+        this.'Fn::Join'[1][ this is_string ] != /:policy\/(AdministratorAccess|PowerUserAccess|IAMFullAccess)$/
+        <<BASE-IAM-003: No administrator-equivalent managed policies>>
+      }
+    }
+  }
+  when %starter_iam_policies !empty {
+    %starter_iam_policies.Properties.PolicyDocument.Statement[ Effect == 'Allow' some Action[*] == '*' some Resource[*] == '*' ] empty
+    <<BASE-IAM-003: No Allow of "*" on "*">>
+  }
+  when %starter_iam_inline_identities !empty {
+    %starter_iam_inline_identities.Properties.Policies[*].PolicyDocument.Statement[ Effect == 'Allow' some Action[*] == '*' some Resource[*] == '*' ] empty
+    <<BASE-IAM-003: No Allow of "*" on "*">>
+  }
+}
+
+rule BASE_IAM_005 when %starter_iam_long_lived !empty {
+  %starter_iam_long_lived.Type !IN ['AWS::IAM::User', 'AWS::IAM::AccessKey']
+  <<BASE-IAM-005: No IAM users or access keys (use roles)>>
+}
+
+#
+# BASE-IAM-006: role trust policies never trust "*". FAIL CLOSED (allowlist).
+# Mirrors policyDocumentFindings in policies/src/rules/principals.ts; both engines must agree on every
+# fixture (parity test). An Allow statement passes only when its Principal is a map of
+# AWS/Service/Federated/CanonicalUser and every value is:
+#   - a literal string without "*" or "?", or
+#   - Ref to AWS::AccountId/Partition/Region/URLSuffix or to an IAM OIDC/SAML provider in the
+#     template (Ref returns its ARN), or
+#   - Fn::GetAtt Arn ([id, "Arn"] or "id.Arn") of an AWS::IAM::Role/User in the template, or
+#   - Fn::Join [delimiter, [parts]] whose first part is a literal "arn:..." (or "arn" with
+#     a ":" delimiter) and whose parts are literals without wildcards or such Ref/Fn::GetAtt,
+#   - Fn::Sub string form starting with "arn:", no wildcard, and no ${...} other than the
+#     four pseudo parameters above.
+# Other resource types fail, including custom resources and third-party registry types.
+# Everything else fails, never skips: Fn::If/Fn::Select/Fn::Split/Fn::ImportValue, Fn::Sub
+# with a variable map, Refs to parameters, nested lists, non-literal statements, and any
+# NotPrincipal. Deny statements may use "*" (they only restrict).
+# Guard compares intrinsic maps by shape; comparing a map with "*" is a Guard error.
+#
+# BEGIN shared principal allowlist variables (identical in iam.guard and s3.guard; test-enforced)
+let starter_principal_resources = Resources
+let starter_principal_keys = ['AWS', 'Service', 'Federated', 'CanonicalUser']
+let starter_principal_safe_pseudo_parameters = [
+  'AWS::AccountId',
+  'AWS::Partition',
+  'AWS::Region',
+  'AWS::URLSuffix'
+]
+let starter_principal_ref_types = ['AWS::IAM::OIDCProvider', 'AWS::IAM::SAMLProvider']
+let starter_principal_getatt_arn_types = ['AWS::IAM::Role', 'AWS::IAM::User']
+# END shared principal allowlist variables
+
+rule BASE_IAM_006 when %starter_iam_roles !empty {
+  %starter_iam_roles {
+    Properties.AssumeRolePolicyDocument.Statement exists
+    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: trust policy has no literal Statement list)>>
+    Properties.AssumeRolePolicyDocument.Statement !empty
+    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: trust policy has no literal Statement list)>>
+    when Properties.AssumeRolePolicyDocument.Statement exists {
+      Properties.AssumeRolePolicyDocument.Statement[*] {
+        this is_struct
+        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: statement is not a literal statement object)>>
+        this[ keys == /^Fn::/ ] empty
+        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: statement is not a literal statement object, e.g. Fn::If)>>
+        NotPrincipal !exists
+        <<BASE-IAM-006: Role trust policies never trust "*" (NotPrincipal is not allowed in a trust policy)>>
+        Effect IN ['Allow', 'Deny']
+        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Effect is not a literal Allow or Deny)>>
+        when Effect == 'Allow' {
+          # BEGIN shared principal allowlist (identical in iam.guard and s3.guard; test-enforced)
+          Principal is_struct
+          <<BASE-IAM-006: Role trust policies never trust "*" (Principal must be a map of AWS/Service/Federated/CanonicalUser; "*" trusts every account)>>
+          Principal[ keys !IN %starter_principal_keys ] empty
+          <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Principal key is not AWS/Service/Federated/CanonicalUser, e.g. Fn::If)>>
+          Principal[ keys IN %starter_principal_keys ] !empty
+          <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Principal names no AWS/Service/Federated/CanonicalUser value)>>
+          Principal.*[*] {
+            this is_string or this is_struct
+            <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: principal value is not a string or an intrinsic function)>>
+            when this is_string {
+              this != /[*?]/
+              <<BASE-IAM-006: Role trust policies never trust "*" (wildcard principal)>>
+            }
+            when this is_struct {
+              this !empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              this[ keys !IN ['Ref', 'Fn::GetAtt', 'Fn::Join', 'Fn::Sub'] ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: only Ref, Fn::GetAtt, Fn::Join and Fn::Sub building an ARN are accepted)>>
+              this[ keys == 'Ref' ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              or this[ keys != 'Ref' ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              this[ keys == 'Fn::GetAtt' ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              or this[ keys != 'Fn::GetAtt' ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              this[ keys == 'Fn::Join' ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              or this[ keys != 'Fn::Join' ] empty
+              <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: value is not a single intrinsic function)>>
+              when this.Ref exists {
+                this.Ref is_string
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref target is not a literal logical ID)>>
+                let starter_principal_ref = this.Ref
+                this.Ref IN %starter_principal_safe_pseudo_parameters
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                or %starter_principal_resources[ keys == %starter_principal_ref ] !empty
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                when %starter_principal_resources[ keys == %starter_principal_ref ] !empty {
+                  when %starter_principal_resources[ keys == %starter_principal_ref ].Type !IN %starter_principal_ref_types {
+                    this.Ref !exists
+                    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref names a resource type that is not an IAM principal ARN; custom and third-party types set their own values)>>
+                  }
+                }
+              }
+              when this.'Fn::GetAtt' exists {
+                this.'Fn::GetAtt' is_list or this.'Fn::GetAtt' is_string
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"] or "logicalId.Arn")>>
+                when this.'Fn::GetAtt' is_list {
+                  this.'Fn::GetAtt'[2] !exists
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                  this.'Fn::GetAtt'[0] is_string
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                  this.'Fn::GetAtt'[1] is_string
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                  this.'Fn::GetAtt'[1] == 'Arn'
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must read the Arn attribute)>>
+                  let starter_principal_getatt = this.'Fn::GetAtt'[0]
+                  %starter_principal_resources[ keys == %starter_principal_getatt ] !empty
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must name a resource in the template)>>
+                  when %starter_principal_resources[ keys == %starter_principal_getatt ] !empty {
+                    when %starter_principal_resources[ keys == %starter_principal_getatt ].Type !IN %starter_principal_getatt_arn_types {
+                      this.'Fn::GetAtt' !exists
+                      <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                    }
+                  }
+                }
+                when this.'Fn::GetAtt' is_string {
+                  this.'Fn::GetAtt' == /^[A-Za-z0-9]+\.Arn$/
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be "logicalId.Arn")>>
+                  let starter_principal_getatt_dotted = regex_replace(this.'Fn::GetAtt', "^([A-Za-z0-9]+)\.Arn$", "${1}")
+                  %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must name a resource in the template)>>
+                  when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty {
+                    when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ].Type !IN %starter_principal_getatt_arn_types {
+                      this.'Fn::GetAtt' !exists
+                      <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                    }
+                  }
+                }
+              }
+              when this.'Fn::Join' exists {
+                this.'Fn::Join' is_list
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join must be [delimiter, [parts]])>>
+                this.'Fn::Join'[2] !exists
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join must be [delimiter, [parts]])>>
+                this.'Fn::Join'[0] is_string
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join delimiter is not a literal string)>>
+                this.'Fn::Join'[0] != /[*?]/
+                <<BASE-IAM-006: Role trust policies never trust "*" (Fn::Join delimiter contains a wildcard)>>
+                this.'Fn::Join'[1] is_list
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join parts are not a literal list)>>
+                this.'Fn::Join'[1][0] is_string
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join does not start with a literal "arn:" prefix)>>
+                this.'Fn::Join'[1][0] == /^arn:/ or this.'Fn::Join'[0] == ':'
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join does not start with a literal "arn:" prefix)>>
+                this.'Fn::Join'[1][0] == /^arn:/ or this.'Fn::Join'[1][0] == 'arn'
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join does not start with a literal "arn:" prefix)>>
+                this.'Fn::Join'[1][*] {
+                  this is_string or this is_struct
+                  <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join part is not a string or an intrinsic function)>>
+                  when this is_string {
+                    this != /[*?]/
+                    <<BASE-IAM-006: Role trust policies never trust "*" (Fn::Join part contains a wildcard)>>
+                  }
+                  when this is_struct {
+                    this !empty
+                    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join part is not a single intrinsic function)>>
+                    this[ keys !IN ['Ref', 'Fn::GetAtt'] ] empty
+                    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join parts may only use Ref and Fn::GetAtt)>>
+                    this[ keys == 'Ref' ] empty
+                    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join part is not a single intrinsic function)>>
+                    or this[ keys != 'Ref' ] empty
+                    <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Join part is not a single intrinsic function)>>
+                    when this.Ref exists {
+                      this.Ref is_string
+                      <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref target is not a literal logical ID)>>
+                      let starter_principal_ref = this.Ref
+                      this.Ref IN %starter_principal_safe_pseudo_parameters
+                      <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                      or %starter_principal_resources[ keys == %starter_principal_ref ] !empty
+                      <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref must name an accepted pseudo parameter or an IAM identity provider in the template; a parameter can resolve to "*")>>
+                      when %starter_principal_resources[ keys == %starter_principal_ref ] !empty {
+                        when %starter_principal_resources[ keys == %starter_principal_ref ].Type !IN %starter_principal_ref_types {
+                          this.Ref !exists
+                          <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Ref names a resource type that is not an IAM principal ARN; custom and third-party types set their own values)>>
+                        }
+                      }
+                    }
+                    when this.'Fn::GetAtt' exists {
+                      this.'Fn::GetAtt' is_list or this.'Fn::GetAtt' is_string
+                      <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"] or "logicalId.Arn")>>
+                      when this.'Fn::GetAtt' is_list {
+                        this.'Fn::GetAtt'[2] !exists
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                        this.'Fn::GetAtt'[0] is_string
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                        this.'Fn::GetAtt'[1] is_string
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be [logicalId, "Arn"])>>
+                        this.'Fn::GetAtt'[1] == 'Arn'
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must read the Arn attribute)>>
+                        let starter_principal_getatt = this.'Fn::GetAtt'[0]
+                        %starter_principal_resources[ keys == %starter_principal_getatt ] !empty
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must name a resource in the template)>>
+                        when %starter_principal_resources[ keys == %starter_principal_getatt ] !empty {
+                          when %starter_principal_resources[ keys == %starter_principal_getatt ].Type !IN %starter_principal_getatt_arn_types {
+                            this.'Fn::GetAtt' !exists
+                            <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                          }
+                        }
+                      }
+                      when this.'Fn::GetAtt' is_string {
+                        this.'Fn::GetAtt' == /^[A-Za-z0-9]+\.Arn$/
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must be "logicalId.Arn")>>
+                        let starter_principal_getatt_dotted = regex_replace(this.'Fn::GetAtt', "^([A-Za-z0-9]+)\.Arn$", "${1}")
+                        %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty
+                        <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt must name a resource in the template)>>
+                        when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ] !empty {
+                          when %starter_principal_resources[ keys == %starter_principal_getatt_dotted ].Type !IN %starter_principal_getatt_arn_types {
+                            this.'Fn::GetAtt' !exists
+                            <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::GetAtt names a resource type whose Arn is not an IAM principal; custom and third-party types set their own values)>>
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              when this.'Fn::Sub' exists {
+                this.'Fn::Sub' is_string
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Sub must be the string form)>>
+                this.'Fn::Sub' == /^arn:([^*?$]|\$\{(AWS::AccountId|AWS::Partition|AWS::Region|AWS::URLSuffix)\})*$/
+                <<BASE-IAM-006: Role trust policies never trust "*" (fail closed: Fn::Sub must start with "arn:", contain no wildcard and use only ${AWS::AccountId|Partition|Region|URLSuffix})>>
+              }
+            }
+          }
+          # END shared principal allowlist
+        }
+      }
+    }
+  }
+}

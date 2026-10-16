@@ -1,0 +1,124 @@
+# AWS-dependent jobs — opt-in. NOTHING here runs without AWS configuration, nothing runs on an
+# unprotected ref, and nothing is reported as passed when it did not run: `aws:status` lists every
+# AWS job with "not configured — not executed" (a green status report, not a passed check).
+#
+# Credentials (ADR 0111): NOT GitLab CI/CD variables — a protected variable reaches every job
+# of a protected-ref pipeline, on any runner. They are files mounted read-only into the jobs of a
+# dedicated protected runner only (/run/starter-aws/{credentials,config}, provisioned by the runner
+# operator; select it with STARTER_PROTECTED_RUNNER_TAG), read through the standard AWS SDK variables
+# below. The jobs exist only when the non-secret project variable AWS_JOBS_ENABLED=true is set AND
+# the ref is protected; a job fails if the credentials are not mounted.
+# (OIDC id_tokens are the better answer when AWS can reach the GitLab issuer; see security.md.)
+
+.aws:
+  extends: [.node, .protected-runner]
+  stage: aws
+  variables:
+    AWS_REGION: ap-southeast-1
+    AWS_INTEGRATION_ENABLED: 'true'
+    AWS_SHARED_CREDENTIALS_FILE: /run/starter-aws/credentials
+    AWS_CONFIG_FILE: /run/starter-aws/config
+    AWS_SDK_LOAD_CONFIG: '1'
+    PNPM: pnpm
+  before_script:
+    - |
+      if [ ! -s "$AWS_SHARED_CREDENTIALS_FILE" ]; then
+        echo "ERROR: AWS_JOBS_ENABLED=true but the runner-scoped credentials ($AWS_SHARED_CREDENTIALS_FILE) are not mounted on ${CI_RUNNER_DESCRIPTION:-this runner} (STARTER_PROTECTED_RUNNER_TAG='${STARTER_PROTECTED_RUNNER_TAG:-}')." >&2
+        exit 1
+      fi
+    - sh tools/ci/scripts/pnpm-install.sh
+  artifacts:
+    when: always
+    expire_in: 4 weeks
+    paths: [reports/aws/, reports/aws-integration/, reports/drift/]
+
+aws:status:
+  extends: [.status-report]
+  stage: aws
+  needs: []
+  script:
+    - node tools/ci/src/cli.ts status aws --out reports/status
+
+# Real `cdk diff` against the target account (read-only). Informational. Default branch only:
+# MR pipelines never reach the protected runner or its credentials.
+aws:cdk-diff:
+  extends: [.aws]
+  needs: [{ job: impact, artifacts: false }]
+  rules:
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $AWS_JOBS_ENABLED == "true"
+      changes:
+        paths: [infra/**/*, functions/**/*, workflows/**/*, pnpm-lock.yaml]
+  allow_failure: true
+  script:
+    - sh tools/ci/scripts/aws-cdk-diff.sh
+
+# Ephemeral integration mini-stack: deploy (manual) -> test -> cleanup (always).
+aws:integration:deploy:
+  extends: [.aws]
+  # The manual real-AWS deploy never runs on a red policy gate (policy:infra always runs on the
+  # default branch, where this job exists).
+  needs: [{ job: impact, artifacts: false }, { job: 'policy:infra', artifacts: false }]
+  rules:
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $AWS_JOBS_ENABLED == "true"
+      when: manual
+      allow_failure: true
+  resource_group: aws-integration
+  script:
+    - pnpm --filter "@starter/infra..." --filter "@starter/tests-aws-integration..." run --if-present build
+    - bash tests/aws-integration/scripts/deploy.sh
+
+aws:integration:test:
+  extends: [.aws]
+  needs: [{ job: 'aws:integration:deploy', artifacts: true }]
+  rules:
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $AWS_JOBS_ENABLED == "true"
+  script:
+    - pnpm --filter "@starter/tests-aws-integration..." run --if-present build
+    - bash tests/aws-integration/scripts/run.sh
+  artifacts:
+    reports:
+      junit: reports/junit/aws-integration*.xml
+
+aws:integration:cleanup:
+  extends: [.aws]
+  needs:
+    - { job: 'aws:integration:deploy', artifacts: true }
+    - { job: 'aws:integration:test', artifacts: false }
+  rules:
+    - if: $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      when: never
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $AWS_JOBS_ENABLED == "true"
+      when: always
+  script:
+    - pnpm --filter "@starter/infra..." --filter "@starter/tests-aws-integration..." run --if-present build
+    - bash tests/aws-integration/scripts/cleanup.sh
+
+# Scheduled drift detection: schedule with SCHEDULE_TASK=drift.
+aws:drift:
+  extends: [.aws]
+  needs: [{ job: 'policy:gate-integrity', optional: true }]
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $SCHEDULE_TASK == "drift" && $AWS_JOBS_ENABLED == "true"
+  allow_failure:
+    exit_codes: [3] # tool-drift "not configured": a warning, never a pass
+  script:
+    - sh tools/ci/scripts/aws-drift.sh
+
+# Scheduled sweeper for leaked ephemeral stacks: schedule with SCHEDULE_TASK=sweep
+# (SWEEP_APPLY=true deletes; default is a dry-run report).
+aws:sweeper:
+  extends: [.aws]
+  needs: [{ job: 'policy:gate-integrity', optional: true }]
+  rules:
+    - if: $CI_COMMIT_REF_PROTECTED == "true" && $SCHEDULE_TASK == "sweep" && $AWS_JOBS_ENABLED == "true"
+  variables:
+    SWEEP_APPLY: 'false'
+  script:
+    - pnpm --filter "@starter/tests-aws-integration..." run --if-present build
+    - sh tools/ci/scripts/aws-sweeper.sh

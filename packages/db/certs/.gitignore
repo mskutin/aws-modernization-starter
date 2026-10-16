@@ -1,0 +1,3 @@
+# The repository .gitignore excludes *.pem (private keys). This directory holds PUBLIC CA
+# certificates only (see README.md), so the vendored bundle is re-included explicitly.
+!rds-global-bundle.pem

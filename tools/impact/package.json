@@ -1,0 +1,30 @@
+{
+  "name": "@starter/tool-impact",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Dependency-aware CI impact analysis, GitLab rules generator and mandatory-gate verifier driven by components.yaml.",
+  "bin": {
+    "starter-impact": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "impact": "node src/cli.ts",
+    "generate": "node src/cli.ts generate",
+    "schema": "node src/cli.ts schema --write"
+  },
+  "dependencies": {
+    "prettier": "3.9.10",
+    "yaml": "2.9.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}

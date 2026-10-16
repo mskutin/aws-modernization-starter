@@ -1,0 +1,166 @@
+# GitLab CI/CD for aws-modernization-starter.
+#
+# Logical flow (a DAG via `needs`, stages only order the UI):
+#
+#   [policy:gate-integrity] ─► impact ─┬─ code quality  (lint, format, test:<component>, contracts:openapi-drift)
+#                                      ├─ security      (secrets, SAST, SCA, licenses, supply-chain, protected-secrets)
+#                                      ├─ infrastructure(synth:infra [matrix], policy:infra, finops:infra)
+#                                      └─ container     (container:lint/build/scan/sbom/provenance:<id>)
+#        └──► gates:mandatory ─┬─ integration:* / e2e ───────────────────┬─► security:artifact-scan
+#                              ├─ integration:ministack:{cdk,workflows} ─┘    (artifact leak scan)
+#                              │    (MiniStack service; no socket, fake credentials)
+#                              ├─ review:ai (opt-in, advisory) ─► approval:human (MR)
+#                              └─ protected release refs: container:publish (registry enabled)
+#                                   └─► sign ─► verify ─► chain-report (opt-in: STARTER_RELEASE_SIGNING)
+#
+# Runs with ZERO project configuration on any GitLab (self-managed or gitlab.com) with one generic
+# Docker-executor runner that accepts untagged jobs: no privileged mode, no socket, no runner-mounted
+# files. Optional capabilities are opt-in project variables (docs/ci-cd.md "Bring your own
+# GitLab"): runner tags, release signing, gate integrity, AI review, AWS jobs, plain-HTTP registry.
+#
+# `policy:gate-integrity` exists only when the project's CI/CD configuration file is the
+# Maintainer-only gate policy (`ci_config_path = projects/<slug>/gate-policy.yml@<policy project>`,
+# ADR 0410): it runs a child pipeline compiled from that project and blocks the pipeline when a
+# gate-defining path differs from a Maintainer-approved state.
+#
+# Runners (ADR 0110): every job runs on the runner selected by STARTER_RUNNER_TAG (empty = any
+# runner that accepts untagged jobs). Jobs that only exist on protected refs use
+# STARTER_PROTECTED_RUNNER_TAG, the image build chain STARTER_RELEASE_RUNNER_TAG and signing
+# STARTER_SIGNER_RUNNER_TAG; all three are empty by default (same generic runner). GitLab drops an
+# empty tag, so an unset tag variable means "untagged", never a stuck job.
+#
+# Which component jobs exist is decided by `.impact:<component>` rules generated
+# from components.yaml (see .gitlab/ci/generated/components.yml and
+# docs/ci-cd.md). Default-branch, tag and scheduled pipelines run everything.
+
+include:
+  - local: .gitlab/ci/images.yml
+  - local: .gitlab/ci/templates.yml
+  - local: .gitlab/ci/impact.yml
+  - local: .gitlab/ci/quality.yml
+  - local: .gitlab/ci/security.yml
+  - local: .gitlab/ci/infra.yml
+  - local: .gitlab/ci/container.yml
+  - local: .gitlab/ci/gates.yml
+  - local: .gitlab/ci/integration.yml
+  - local: .gitlab/ci/emulator.yml
+  - local: .gitlab/ci/review.yml
+  - local: .gitlab/ci/aws.yml
+  - local: .gitlab/ci/schedules.yml
+  - local: .gitlab/ci/generated/components.yml
+
+workflow:
+  name: '$PIPELINE_NAME'
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    # Merge request pipelines for MR events…
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      variables:
+        PIPELINE_NAME: 'MR !$CI_MERGE_REQUEST_IID: $CI_MERGE_REQUEST_TITLE'
+    # …and no other branch pipeline (push, web, API trigger) while an MR is open: the MR
+    # pipeline is the only one that carries the merge gates (FinOps approval, approval record).
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE != "schedule"
+      when: never
+    # Schedules, tags and branches. Release jobs (publish, sign, verify) exist only on protected
+    # refs; their own rules check that, the names below only label the pipeline.
+    # Task names are matched explicitly: in workflow:rules a bare `$SCHEDULE_TASK` was true for the
+    # empty default, while job rules treated it as empty.
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/ && $CI_COMMIT_REF_PROTECTED == "true"
+      variables:
+        PIPELINE_NAME: 'Scheduled task: $SCHEDULE_TASK'
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_TASK =~ /^(rescan|stale|drift|sweep)$/
+      variables:
+        PIPELINE_NAME: 'Scheduled task: $SCHEDULE_TASK (unprotected ref: protected jobs absent)'
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_REF_PROTECTED == "true"
+      variables:
+        PIPELINE_NAME: 'Scheduled full pipeline ($CI_COMMIT_BRANCH)'
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      variables:
+        PIPELINE_NAME: 'Scheduled full pipeline ($CI_COMMIT_BRANCH)'
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_REF_PROTECTED == "true"
+      variables:
+        PIPELINE_NAME: 'Release $CI_COMMIT_TAG'
+    - if: $CI_COMMIT_TAG
+      variables:
+        PIPELINE_NAME: 'Tag $CI_COMMIT_TAG (unprotected: not a release)'
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true"
+      variables:
+        PIPELINE_NAME: '$CI_COMMIT_BRANCH: $CI_COMMIT_TITLE'
+    - if: $CI_COMMIT_BRANCH
+      variables:
+        PIPELINE_NAME: '$CI_COMMIT_BRANCH: $CI_COMMIT_TITLE'
+
+stages:
+  - impact
+  - verify
+  - package
+  - gate
+  - integration
+  - review
+  - approval
+  - aws
+
+default:
+  # Empty by default: GitLab drops an empty tag, so the job is untagged and any runner that accepts
+  # untagged jobs takes it.
+  tags: ['$STARTER_RUNNER_TAG']
+  interruptible: true
+  timeout: 30 minutes
+  retry:
+    max: 1
+    when: [runner_system_failure, stuck_or_timeout_failure, api_failure, scheduler_failure]
+
+variables:
+  # Enough history for most MR diffs; the impact job fetches a missing base explicitly.
+  GIT_DEPTH: '50'
+  GIT_STRATEGY: fetch
+  FF_USE_FASTZIP: 'true'
+  ARTIFACT_COMPRESSION_LEVEL: fast
+  CACHE_COMPRESSION_LEVEL: fast
+  # Git hooks are a local convenience; CI re-runs every check itself.
+  LEFTHOOK: '0'
+  IMPACT_RUN_ALL:
+    value: 'false'
+    options: ['false', 'true']
+    description: 'true = ignore impact analysis and run every job (fail-safe override).'
+  SCHEDULE_TASK:
+    value: ''
+    description: 'Scheduled pipelines only: "rescan", "stale", "drift" or "sweep" runs just that task; empty = full pipeline.'
+  # ── Runner selection (all optional; empty = untagged = the generic runner) ─────────────────────
+  # Keep these defined (even empty): an undefined variable in `tags` stays a literal "$NAME" tag
+  # that no runner has. Set them as project CI/CD variables; nested references ($OTHER) are not
+  # expanded in `tags`, so each must hold a literal tag.
+  STARTER_RUNNER_TAG:
+    value: ''
+    description: 'Runner tag for ordinary jobs (MR and branch jobs, services). Empty = untagged.'
+  STARTER_PROTECTED_RUNNER_TAG:
+    value: ''
+    description: 'Runner tag for jobs that only exist on protected refs (publish, verify, chain report, schedules, aws:*). Empty = untagged.'
+  STARTER_RELEASE_RUNNER_TAG:
+    value: ''
+    description: 'Runner tag for the image build chain (build, scan, SBOM, provenance). Set it as a PROTECTED project variable to build releases on a protected runner while MR builds stay untagged.'
+  STARTER_SIGNER_RUNNER_TAG:
+    value: ''
+    description: 'Runner tag for container:sign (the runner that mounts the signing key; release signing only).'
+  # ── Optional capabilities (explicit opt-in) ─────────────────────────────────────────────────────
+  STARTER_RELEASE_SIGNING:
+    value: 'false'
+    options: ['false', 'true']
+    description: 'true = sign, attest and verify released images with the project key (runner-mounted files, docs/ci-cd.md). false = images are published UNSIGNED and release:status says so.'
+  STARTER_CONTAINER_BUILD:
+    value: 'true'
+    options: ['true', 'false']
+    description: 'false = opt out of image build/scan/SBOM/provenance/publish (runners that cannot run rootless Buildah). Reported as a warning by release:status and the gate.'
+  REGISTRY_TLS_VERIFY:
+    value: 'true'
+    options: ['true', 'false']
+    description: 'false = talk plain HTTP / unverified TLS to the container registry (explicit opt-in for a lab registry only).'
+  REQUIRE_HUMAN_APPROVAL:
+    value: 'true'
+    options: ['true', 'false']
+    description: 'MR pipelines end in a blocking manual approval-record job (audit trail, not a CE-enforced control).'
+  AI_REVIEW_ENABLED:
+    value: 'false'
+    options: ['false', 'true']
+    description: 'Advisory AI review (off by default; the job does not exist unless true). Also needs AI_REVIEW_GITLAB_TOKEN, AI_REVIEW_API_BASE, AI_REVIEW_MODEL.'

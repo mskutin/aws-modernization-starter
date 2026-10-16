@@ -1,0 +1,7 @@
+exit 2
+--- stdout
+--- stderr
+REFUSED — --expected-account is required (exactly 12 digits)
+REFUSED — --expected-role-pattern: the pattern must contain at least 3 literal characters
+REFUSED — --region must be one aws-partition region, given once (cn-north-1 belongs to the aws-cn partition; only the aws partition is supported; us-east-1 is used automatically, for global endpoints only)
+REFUSED — --attest-read-only must be 10-500 characters

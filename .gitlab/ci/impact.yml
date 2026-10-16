@@ -1,0 +1,36 @@
+# Impact analysis — first job of every (non-task) pipeline. Everything needs it.
+#
+#  - validates components.yaml against its schema and the pnpm workspace
+#  - fails if .gitlab/ci/generated/components.yml is stale
+#  - diffs against CI_MERGE_REQUEST_DIFF_BASE_SHA / CI_COMMIT_BEFORE_SHA
+#    (fetching the base if the shallow clone lacks it)
+#  - fails on changed paths that components.yaml does not map
+#  - writes reports/impact/impact.{json,md,env}; the gate re-checks the selection
+#
+# It also warms the pnpm store cache for every other Node job.
+#
+# When the project's CI/CD configuration file is the Maintainer-only gate policy (ADR 0410), the
+# policy adds `policy:gate-integrity` (a child pipeline compiled from the policy project). `impact` —
+# and therefore every other job — waits for it, so a blocked MR spends no runner time. Without the
+# policy the need is absent (optional) and `impact` starts at once.
+impact:
+  extends: [.node, .rules:always]
+  stage: impact
+  needs:
+    - { job: 'policy:gate-integrity', optional: true }
+  cache:
+    - key:
+        prefix: pnpm-store-v1
+        files: [pnpm-lock.yaml]
+      paths: [.pnpm-store/]
+      policy: pull-push
+  script:
+    - node tools/impact/src/cli.ts analyze --fetch-missing
+    - head -n 40 reports/impact/impact.md
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    expose_as: 'Impact report'
+    paths: [reports/impact/]
+    reports:
+      dotenv: reports/impact/impact.env

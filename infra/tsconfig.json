@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": [
+    "bin",
+    "constructs",
+    "environments",
+    "lib",
+    "stacks",
+    "stages",
+    "test",
+    "vitest.config.ts"
+  ],
+  "exclude": ["dist", "cdk.out", "cdk.out.*", "node_modules"],
+  "references": [
+    { "path": "../workflows/processing/tsconfig.build.json" },
+    { "path": "../policies" }
+  ]
+}

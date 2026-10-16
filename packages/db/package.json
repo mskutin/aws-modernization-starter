@@ -1,0 +1,46 @@
+{
+  "name": "@starter/db",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "PostgreSQL access for the API, database CLIs and Lambdas: pool factory with verify-full TLS (RDS CA bundle), per-connection credentials (password, password file, RDS IAM tokens), the least-privilege role model, its bootstrap and the migration runner.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./roles": {
+      "types": "./dist/roles.d.ts",
+      "default": "./dist/roles.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist",
+    "certs"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:containers": "vitest run --project containers"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.1149.0",
+    "@aws-sdk/rds-signer": "3.1149.0",
+    "@starter/config": "workspace:*",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@starter/observability": "workspace:*",
+    "@starter/testing": "workspace:*",
+    "@types/pg": "8.23.1",
+    "testcontainers": "12.2.0"
+  }
+}
